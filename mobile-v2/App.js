@@ -138,8 +138,14 @@ export default function App() {
         Alert.alert('Success', 'Account created! Please login.');
       }
     } catch (error) {
-      console.error('Auth Error:', error.toJSON ? error.toJSON() : error);
-      Alert.alert('Error', error.response?.data?.error || error.message || 'Connection failed');
+      // Only log actual server errors, not Metro bundler noise
+      if (error.response) {
+        console.error('Auth Error:', error.response.status, error.response.data);
+        Alert.alert('Error', error.response?.data?.error || 'Connection failed');
+      } else if (error.request) {
+        console.error('Network Error - cannot reach server');
+        Alert.alert('Error', 'Cannot reach server. Check your connection.');
+      }
     } finally {
       setLoading(false);
     }
