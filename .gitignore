@@ -190,3 +190,8 @@ server-app/uploads/*
 !server-app/uploads/.gitkeep
 server-app/backup.db
 server-app/backup.db-journal
+server-app/dist/
+*.dmg
+*.AppImage
+*.deb
+*.rpm

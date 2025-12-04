@@ -6,7 +6,11 @@
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
+    "build-all": "electron-builder --mac --win --linux",
     "build-mac": "electron-builder --mac",
+    "build-mac-intel": "electron-builder --mac --x64",
+    "build-mac-arm": "electron-builder --mac --arm64",
+    "build-mac-universal": "electron-builder --mac universal",
     "build-win": "electron-builder --win",
     "build-linux": "electron-builder --linux"
   },
@@ -18,24 +22,69 @@
       "preload.js",
       "index.html",
       "server.js",
-      "backup.db",
-      "uploads/**/*",
+      "icon.png",
+      "!backup.db",
+      "!uploads/**/*",
       "node_modules/**/*"
     ],
     "directories": {
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "."
     },
     "mac": {
       "category": "public.app-category.utilities",
-      "icon": "icon.png"
+      "icon": "icon.png",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64", "universal"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64", "universal"]
+        }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": null,
+      "entitlementsInherit": null
     },
     "win": {
-      "target": "nsis",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
       "icon": "icon.png"
     },
     "linux": {
-      "target": "AppImage",
-      "icon": "icon.png"
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "rpm",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "icon": "icon.png",
+      "category": "Utility"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     }
   },
   "dependencies": {
