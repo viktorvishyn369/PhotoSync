@@ -215,11 +215,13 @@ export default function App() {
       }
 
       // 2. Get Server List
+      setStatus('Checking server files...');
       const config = await getAuthHeaders();
       const SERVER_URL = getServerUrl();
       const serverRes = await axios.get(`${SERVER_URL}/api/files`, config);
       const serverFiles = new Set(serverRes.data.files.map(f => f.filename));
       
+      console.log(`Server has ${serverFiles.size} files`);
       console.log('Server files:', Array.from(serverFiles));
       console.log('Local assets:', assets.assets.map(a => a.filename));
 
@@ -230,45 +232,75 @@ export default function App() {
         return !exists;
       });
       
-      console.log(`Need to upload ${toUpload.length} files`);
+      console.log(`Local: ${assets.assets.length}, Server: ${serverFiles.size}, To upload: ${toUpload.length}`);
       
       if (toUpload.length === 0) {
-        setStatus('All files already backed up.');
+        setStatus(`All ${assets.assets.length} files already backed up.`);
+        Alert.alert('Up to Date', `All ${assets.assets.length} photos/videos are already on the server.`);
         setLoading(false);
         return;
       }
 
-      // 4. Upload Loop
-      let count = 0;
-      for (const asset of toUpload) {
-        setStatus(`Uploading ${count + 1}/${toUpload.length}: ${asset.filename}`);
-        
-        // Get file info
-        const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
-        // On iOS, localUri might be needed. On Android uri is usually file://
-        const localUri = assetInfo.localUri || assetInfo.uri;
+      // Show summary before starting
+      setStatus(`Ready to backup ${toUpload.length} of ${assets.assets.length} files...`);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Brief pause to show message
 
-        if (!localUri) continue;
+      // 4. Upload Loop with per-file error handling
+      let successCount = 0;
+      let failedCount = 0;
+      const failedFiles = [];
+      
+      for (let i = 0; i < toUpload.length; i++) {
+        const asset = toUpload[i];
+        try {
+          setStatus(`Uploading ${i + 1}/${toUpload.length}: ${asset.filename}`);
+          
+          // Get file info
+          const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
+          const localUri = assetInfo.localUri || assetInfo.uri;
 
-        const formData = new FormData();
-        formData.append('file', {
-          uri: localUri,
-          name: asset.filename,
-          type: asset.mediaType === 'video' ? 'video/mp4' : 'image/jpeg', // Simplified mime type guessing
-        });
+          if (!localUri) {
+            console.warn(`Skipping ${asset.filename}: no URI`);
+            failedCount++;
+            failedFiles.push(asset.filename);
+            continue;
+          }
 
-        // Axios upload
-        await axios.post(`${SERVER_URL}/api/upload`, formData, {
+          const formData = new FormData();
+          formData.append('file', {
+            uri: localUri,
+            name: asset.filename,
+            type: asset.mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
+          });
+
+          // Upload with timeout
+          await axios.post(`${SERVER_URL}/api/upload`, formData, {
             headers: {
-                'Content-Type': 'multipart/form-data',
-                ...config.headers
-            }
-        });
-        count++;
-        setProgress(count / toUpload.length);
+              'Content-Type': 'multipart/form-data',
+              ...config.headers
+            },
+            timeout: 30000 // 30 second timeout per file
+          });
+          
+          successCount++;
+          console.log(`✓ Uploaded: ${asset.filename}`);
+        } catch (fileError) {
+          console.error(`✗ Failed to upload ${asset.filename}:`, fileError.message);
+          failedCount++;
+          failedFiles.push(asset.filename);
+        }
+        
+        setProgress((i + 1) / toUpload.length);
       }
 
-      setStatus(`Backup Complete! Uploaded ${count} file${count !== 1 ? 's' : ''}.`);
+      // Show detailed completion status
+      if (failedCount === 0) {
+        setStatus(`Backup Complete! Uploaded ${successCount} file${successCount !== 1 ? 's' : ''}.`);
+        Alert.alert('Success', `Successfully backed up ${successCount} file${successCount !== 1 ? 's' : ''}.`);
+      } else {
+        setStatus(`Backup Complete: ${successCount} succeeded, ${failedCount} failed.`);
+        Alert.alert('Partial Success', `Uploaded ${successCount} file${successCount !== 1 ? 's' : ''}.\n${failedCount} file${failedCount !== 1 ? 's' : ''} failed.`);
+      }
       setProgress(0); // Reset progress after completion
     } catch (error) {
       console.error(error);
@@ -316,7 +348,7 @@ export default function App() {
       }
       
       const downloadedSet = new Set(cleanedDownloads);
-      console.log(`Server has ${serverFiles.length} files, already downloaded ${cleanedDownloads.length}`);
+      console.log(`Server: ${serverFiles.length}, Downloaded: ${cleanedDownloads.length}`);
       
       if (serverFiles.length === 0) {
         setStatus('No files on server to download.');
@@ -328,12 +360,18 @@ export default function App() {
       // Only download files we haven't downloaded before
       const toDownload = serverFiles.filter(f => !downloadedSet.has(f.filename));
       
+      console.log(`Server: ${serverFiles.length}, Already synced: ${cleanedDownloads.length}, To download: ${toDownload.length}`);
+      
       if (toDownload.length === 0) {
-        setStatus('All files already synced.');
-        Alert.alert('Up to Date', 'All server files are already on your device.');
+        setStatus(`All ${serverFiles.length} files already synced.`);
+        Alert.alert('Up to Date', `All ${serverFiles.length} server files are already on your device.`);
         setLoading(false);
         return;
       }
+
+      // Show summary before starting
+      setStatus(`Ready to download ${toDownload.length} of ${serverFiles.length} files...`);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Brief pause to show message
 
       // 3. Download Loop - download new files only
       let count = 0;
