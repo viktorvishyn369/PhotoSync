@@ -232,11 +232,17 @@ export default function App() {
       console.log('Local assets:', assets.assets.map(a => a.filename));
 
       // 3. Identify Missing on Server
-      const toUpload = assets.assets.filter(asset => {
-        const exists = serverFiles.has(asset.filename);
-        console.log(`Checking ${asset.filename}: ${exists ? 'EXISTS on server' : 'MISSING from server'}`);
-        return !exists;
-      });
+      const toUpload = [];
+      for (const asset of assets.assets) {
+        // Get actual filename (iOS returns UUID in asset.filename, need to check assetInfo)
+        const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
+        const actualFilename = assetInfo.filename || asset.filename;
+        const exists = serverFiles.has(actualFilename);
+        console.log(`Checking ${actualFilename}: ${exists ? 'EXISTS on server' : 'MISSING from server'}`);
+        if (!exists) {
+          toUpload.push(asset);
+        }
+      }
       
       console.log(`Local: ${assets.assets.length}, Server: ${serverFiles.size}, To upload: ${toUpload.length}`);
       
@@ -272,10 +278,14 @@ export default function App() {
             continue;
           }
 
+          // iOS fix: Use the actual filename from assetInfo, not the UUID
+          // assetInfo.filename contains the real name like "IMG_0001.HEIC"
+          const actualFilename = assetInfo.filename || asset.filename;
+
           const formData = new FormData();
           formData.append('file', {
             uri: localUri,
-            name: asset.filename,
+            name: actualFilename,
             type: asset.mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
           });
 
