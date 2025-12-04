@@ -1,6 +1,5 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
-const { spawn } = require('child_process');
 const os = require('os');
 
 let mainWindow;
@@ -24,29 +23,23 @@ function createWindow() {
 }
 
 function startServer() {
-  const serverDir = path.join(__dirname, '..', 'server');
-  serverProcess = spawn('node', ['server.js'], {
-    cwd: serverDir,
-    stdio: 'pipe'
-  });
-
-  serverProcess.stdout.on('data', (data) => {
-    console.log(`Server: ${data}`);
+  // Use Electron's built-in Node.js instead of spawning external process
+  const serverPath = path.join(__dirname, 'server.js');
+  
+  try {
+    // Run server in the same process
+    require(serverPath);
+    
     if (mainWindow) {
-      mainWindow.webContents.send('server-log', data.toString());
+      mainWindow.webContents.send('server-log', 'Server started successfully on port 3000');
     }
-  });
-
-  serverProcess.stderr.on('data', (data) => {
-    console.error(`Server Error: ${data}`);
+    console.log('Server started successfully');
+  } catch (error) {
+    console.error('Failed to start server:', error);
     if (mainWindow) {
-      mainWindow.webContents.send('server-error', data.toString());
+      mainWindow.webContents.send('server-error', `Failed to start server: ${error.message}`);
     }
-  });
-
-  serverProcess.on('close', (code) => {
-    console.log(`Server process exited with code ${code}`);
-  });
+  }
 }
 
 function stopServer() {
