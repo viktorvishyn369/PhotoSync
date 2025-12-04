@@ -205,6 +205,7 @@ export default function App() {
       };
       
       console.log(`Assets to backup: ${assets.assets.length}`);
+      setStatus(`Found ${assets.assets.length} photos/videos to check...`);
 
       if (assets.assets.length === 0) {
         setStatus('No photos found to backup.');

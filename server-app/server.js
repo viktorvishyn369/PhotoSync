@@ -174,10 +174,28 @@ app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => 
 
 // List Files (for Sync)
 app.get('/api/files', authenticateToken, (req, res) => {
-    db.all(`SELECT filename, size, created_at FROM files WHERE user_id = ?`, [req.user.id], (err, rows) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
-        res.json({ files: rows });
-    });
+    // Read files from device UUID folder
+    const deviceDir = path.join(UPLOAD_DIR, req.user.device_uuid);
+    
+    if (!fs.existsSync(deviceDir)) {
+        return res.json({ files: [] });
+    }
+    
+    try {
+        const files = fs.readdirSync(deviceDir).map(filename => {
+            const filePath = path.join(deviceDir, filename);
+            const stats = fs.statSync(filePath);
+            return {
+                filename,
+                size: stats.size,
+                created_at: stats.mtime
+            };
+        });
+        res.json({ files });
+    } catch (error) {
+        console.error('Error reading files:', error);
+        res.status(500).json({ error: 'Error reading files' });
+    }
 });
 
 // Download File

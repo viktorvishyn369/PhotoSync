@@ -221,27 +221,28 @@ app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => 
 
 // List Files (for Sync)
 app.get('/api/files', authenticateToken, (req, res) => {
-    db.all(`SELECT filename, size, created_at FROM files WHERE user_id = ?`, [req.user.id], (err, rows) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
-        
-        // Filter out files that don't actually exist on disk
-        const userDir = path.join(UPLOAD_DIR, req.user.id.toString());
-        const existingFiles = rows.filter(file => {
-            const filePath = path.join(userDir, file.filename);
-            return fs.existsSync(filePath);
+    // Read files from device UUID folder
+    const deviceDir = path.join(UPLOAD_DIR, req.user.device_uuid);
+    
+    if (!fs.existsSync(deviceDir)) {
+        return res.json({ files: [] });
+    }
+    
+    try {
+        const files = fs.readdirSync(deviceDir).map(filename => {
+            const filePath = path.join(deviceDir, filename);
+            const stats = fs.statSync(filePath);
+            return {
+                filename,
+                size: stats.size,
+                created_at: stats.mtime
+            };
         });
-        
-        // Clean up database entries for missing files
-        if (existingFiles.length < rows.length) {
-            const missingFiles = rows.filter(file => !existingFiles.includes(file));
-            missingFiles.forEach(file => {
-                db.run(`DELETE FROM files WHERE user_id = ? AND filename = ?`, [req.user.id, file.filename]);
-                console.log(`Cleaned up missing file from DB: ${file.filename}`);
-            });
-        }
-        
-        res.json({ files: existingFiles });
-    });
+        res.json({ files });
+    } catch (error) {
+        console.error('Error reading files:', error);
+        res.status(500).json({ error: 'Error reading files' });
+    }
 });
 
 // Download File
