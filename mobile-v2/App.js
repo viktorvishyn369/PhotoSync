@@ -349,22 +349,23 @@ export default function App() {
       const serverFiles = serverRes.data.files;
       console.log(`Found ${serverFiles.length} files on server`);
 
-      // 2. Check which files we've already downloaded
-      const downloadedFilesJson = await SecureStore.getItemAsync('downloaded_files');
-      const downloadedFiles = downloadedFilesJson ? JSON.parse(downloadedFilesJson) : [];
+      // 2. Get local device photos to check what already exists
+      setStatus('Checking local photos...');
+      const localAssets = await MediaLibrary.getAssetsAsync({
+        first: 10000,
+        mediaType: ['photo', 'video'],
+      });
       
-      // Clean up tracking - only keep files that exist on server
-      const serverFilenames = new Set(serverFiles.map(f => f.filename));
-      const cleanedDownloads = downloadedFiles.filter(f => serverFilenames.has(f));
-      
-      // Save cleaned tracking
-      if (cleanedDownloads.length !== downloadedFiles.length) {
-        await SecureStore.setItemAsync('downloaded_files', JSON.stringify(cleanedDownloads));
-        console.log(`Cleaned tracking: ${downloadedFiles.length} -> ${cleanedDownloads.length}`);
+      // Create a set of local filenames (case-insensitive for comparison)
+      const localFilenames = new Set();
+      for (const asset of localAssets.assets) {
+        const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
+        const filename = assetInfo.filename || asset.filename;
+        // Normalize to lowercase for case-insensitive comparison
+        localFilenames.add(filename.toLowerCase());
       }
       
-      const downloadedSet = new Set(cleanedDownloads);
-      console.log(`Server: ${serverFiles.length}, Downloaded: ${cleanedDownloads.length}`);
+      console.log(`Local device has ${localFilenames.size} photos/videos`);
       
       if (serverFiles.length === 0) {
         setStatus('No files on server to download.');
@@ -373,10 +374,17 @@ export default function App() {
         return;
       }
       
-      // Only download files we haven't downloaded before
-      const toDownload = serverFiles.filter(f => !downloadedSet.has(f.filename));
+      // Only download files that don't exist locally (case-insensitive check)
+      const toDownload = serverFiles.filter(f => {
+        const normalizedFilename = f.filename.toLowerCase();
+        const exists = localFilenames.has(normalizedFilename);
+        if (exists) {
+          console.log(`Skipping ${f.filename} - already exists locally`);
+        }
+        return !exists;
+      });
       
-      console.log(`Server: ${serverFiles.length}, Already synced: ${cleanedDownloads.length}, To download: ${toDownload.length}`);
+      console.log(`Server: ${serverFiles.length}, Local: ${localFilenames.size}, To download: ${toDownload.length}`);
       
       if (toDownload.length === 0) {
         setStatus(`All ${serverFiles.length} files already synced.`);
@@ -392,7 +400,6 @@ export default function App() {
       // 3. Download Loop - download new files only
       let count = 0;
       const downloadedUris = [];
-      const newDownloads = []; // Track only new downloads
       
       for (const file of toDownload) {
         try {
@@ -410,7 +417,6 @@ export default function App() {
             const fileInfo = await FileSystem.getInfoAsync(downloadRes.uri);
             if (fileInfo.exists && fileInfo.size > 0) {
               downloadedUris.push({ uri: downloadRes.uri, filename: file.filename });
-              newDownloads.push(file.filename);
               console.log(`Downloaded ${file.filename} (${fileInfo.size} bytes)`);
             }
           }
@@ -459,10 +465,6 @@ export default function App() {
           console.log(`Gallery save error: ${galleryError.message}`);
         }
       }
-      // Save updated download tracking - merge cleaned old and new
-      const allDownloaded = [...cleanedDownloads, ...newDownloads];
-      await SecureStore.setItemAsync('downloaded_files', JSON.stringify(allDownloaded));
-      console.log('Updated downloaded files tracking:', allDownloaded);
       
       setStatus(`Restore Complete! ${successCount}/${toDownload.length} files downloaded.`);
       setProgress(0); // Reset progress after completion
