@@ -235,16 +235,37 @@ export default function App() {
 
       // 3. Identify Missing on Server
       const toUpload = [];
+      const duplicateFilenames = {}; // Track duplicate filenames on device
+      
       for (const asset of assets.assets) {
         // Get actual filename (iOS returns UUID in asset.filename, need to check assetInfo)
         const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
         const actualFilename = assetInfo.filename || asset.filename;
+        const normalizedFilename = actualFilename.toLowerCase();
+        
+        // Track if we've seen this filename before (device duplicates)
+        if (duplicateFilenames[normalizedFilename]) {
+          duplicateFilenames[normalizedFilename]++;
+          console.log(`⚠️ DUPLICATE on device: ${actualFilename} (${duplicateFilenames[normalizedFilename]} copies)`);
+        } else {
+          duplicateFilenames[normalizedFilename] = 1;
+        }
+        
         // Case-insensitive comparison (IMG_0001.MOV == img_0001.mov)
-        const exists = serverFiles.has(actualFilename.toLowerCase());
+        const exists = serverFiles.has(normalizedFilename);
         console.log(`Checking ${actualFilename}: ${exists ? 'EXISTS on server' : 'MISSING from server'}`);
         if (!exists) {
           toUpload.push(asset);
         }
+      }
+      
+      // Log device duplicates
+      const deviceDuplicates = Object.entries(duplicateFilenames).filter(([_, count]) => count > 1);
+      if (deviceDuplicates.length > 0) {
+        console.log(`\n📱 Device has ${deviceDuplicates.length} duplicate filenames:`);
+        deviceDuplicates.forEach(([filename, count]) => {
+          console.log(`  - ${filename}: ${count} copies`);
+        });
       }
       
       console.log(`Local: ${assets.assets.length}, Server: ${serverFiles.size}, To upload: ${toUpload.length}`);
