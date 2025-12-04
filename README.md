@@ -173,15 +173,6 @@ npm install
 node server.js
 ```
 
-### Build Desktop Apps
-```bash
-cd server-tray
-npm install
-npm run build-mac    # macOS
-npm run build-win    # Windows
-npm run build-linux  # Linux
-```
-
 ## 📄 License
 
 MIT
