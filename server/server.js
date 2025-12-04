@@ -196,10 +196,21 @@ app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => 
         [req.user.id, fileHash], 
         (err, row) => {
             if (row) {
-                // Duplicate file - delete the uploaded file and return existing filename
-                fs.unlinkSync(filePath);
-                console.log(`Duplicate file detected: ${originalname} (matches ${row.filename})`);
-                return res.json({ message: 'File already exists (duplicate)', filename: row.filename, duplicate: true });
+                // Check if the file actually exists on disk
+                const deviceDir = path.join(UPLOAD_DIR, req.user.device_uuid);
+                const existingFilePath = path.join(deviceDir, row.filename);
+                
+                if (fs.existsSync(existingFilePath)) {
+                    // Duplicate file exists - delete the uploaded file and return existing filename
+                    fs.unlinkSync(filePath);
+                    console.log(`Duplicate file detected: ${originalname} (matches ${row.filename})`);
+                    return res.json({ message: 'File already exists (duplicate)', filename: row.filename, duplicate: true });
+                } else {
+                    // File in DB but not on disk - remove from DB and continue with upload
+                    console.log(`File ${row.filename} in DB but missing from disk - cleaning up DB`);
+                    db.run(`DELETE FROM files WHERE user_id = ? AND file_hash = ?`, [req.user.id, fileHash]);
+                    // Continue to save the new file below
+                }
             }
             
             // Not a duplicate - save to DB
