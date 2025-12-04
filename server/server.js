@@ -224,23 +224,36 @@ app.get('/api/files', authenticateToken, (req, res) => {
     // Read files from device UUID folder
     const deviceDir = path.join(UPLOAD_DIR, req.user.device_uuid);
     
+    console.log(`[LIST FILES] Device UUID: ${req.user.device_uuid}`);
+    console.log(`[LIST FILES] Looking in: ${deviceDir}`);
+    
     if (!fs.existsSync(deviceDir)) {
+        console.log(`[LIST FILES] Directory does not exist`);
         return res.json({ files: [] });
     }
     
     try {
-        const files = fs.readdirSync(deviceDir).map(filename => {
-            const filePath = path.join(deviceDir, filename);
-            const stats = fs.statSync(filePath);
-            return {
-                filename,
-                size: stats.size,
-                created_at: stats.mtime
-            };
-        });
+        const allFiles = fs.readdirSync(deviceDir);
+        console.log(`[LIST FILES] Found ${allFiles.length} items in directory`);
+        
+        // Filter out system files and only include actual media files
+        const files = allFiles
+            .filter(filename => !filename.startsWith('.')) // Skip hidden files like .DS_Store
+            .filter(filename => fs.statSync(path.join(deviceDir, filename)).isFile()) // Only files, not directories
+            .map(filename => {
+                const filePath = path.join(deviceDir, filename);
+                const stats = fs.statSync(filePath);
+                return {
+                    filename,
+                    size: stats.size,
+                    created_at: stats.mtime
+                };
+            });
+        
+        console.log(`[LIST FILES] Returning ${files.length} files`);
         res.json({ files });
     } catch (error) {
-        console.error('Error reading files:', error);
+        console.error('[LIST FILES] Error reading files:', error);
         res.status(500).json({ error: 'Error reading files' });
     }
 });
