@@ -225,7 +225,9 @@ export default function App() {
       const config = await getAuthHeaders();
       const SERVER_URL = getServerUrl();
       const serverRes = await axios.get(`${SERVER_URL}/api/files`, config);
-      const serverFiles = new Set(serverRes.data.files.map(f => f.filename));
+      
+      // Create case-insensitive set of server filenames
+      const serverFiles = new Set(serverRes.data.files.map(f => f.filename.toLowerCase()));
       
       console.log(`Server has ${serverFiles.size} files`);
       console.log('Server files:', Array.from(serverFiles));
@@ -237,7 +239,8 @@ export default function App() {
         // Get actual filename (iOS returns UUID in asset.filename, need to check assetInfo)
         const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
         const actualFilename = assetInfo.filename || asset.filename;
-        const exists = serverFiles.has(actualFilename);
+        // Case-insensitive comparison (IMG_0001.MOV == img_0001.mov)
+        const exists = serverFiles.has(actualFilename.toLowerCase());
         console.log(`Checking ${actualFilename}: ${exists ? 'EXISTS on server' : 'MISSING from server'}`);
         if (!exists) {
           toUpload.push(asset);
@@ -259,6 +262,7 @@ export default function App() {
 
       // 4. Upload Loop with per-file error handling
       let successCount = 0;
+      let duplicateCount = 0;
       let failedCount = 0;
       const failedFiles = [];
       
@@ -290,7 +294,7 @@ export default function App() {
           });
 
           // Upload with timeout
-          await axios.post(`${SERVER_URL}/api/upload`, formData, {
+          const uploadRes = await axios.post(`${SERVER_URL}/api/upload`, formData, {
             headers: {
               'Content-Type': 'multipart/form-data',
               ...config.headers
@@ -298,8 +302,14 @@ export default function App() {
             timeout: 30000 // 30 second timeout per file
           });
           
-          successCount++;
-          console.log(`✓ Uploaded: ${asset.filename}`);
+          // Check if server marked it as duplicate
+          if (uploadRes.data.duplicate) {
+            duplicateCount++;
+            console.log(`⊘ Skipped (duplicate): ${actualFilename}`);
+          } else {
+            successCount++;
+            console.log(`✓ Uploaded: ${actualFilename}`);
+          }
         } catch (fileError) {
           console.error(`✗ Failed to upload ${asset.filename}:`, fileError.message);
           failedCount++;
