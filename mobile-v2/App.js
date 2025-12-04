@@ -410,11 +410,14 @@ export default function App() {
         const normalizedFilename = f.filename.toLowerCase();
         const exists = localFilenames.has(normalizedFilename);
         if (exists) {
-          console.log(`Skipping ${f.filename} - already exists locally`);
+          console.log(`✓ Skipping ${f.filename} - already exists locally`);
+        } else {
+          console.log(`⬇️ Will download ${f.filename} - not found locally`);
         }
         return !exists;
       });
       
+      console.log(`\n📊 Restore Summary:`);
       console.log(`Server: ${serverFiles.length}, Local: ${localFilenames.size}, To download: ${toDownload.length}`);
       
       if (toDownload.length === 0) {

@@ -191,9 +191,9 @@ app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => 
     const fileBuffer = fs.readFileSync(filePath);
     const fileHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
     
-    // Check if this exact file already exists for this user
-    db.get(`SELECT filename FROM files WHERE user_id = ? AND file_hash = ?`, 
-        [req.user.id, fileHash], 
+    // Check if this exact file already exists for this user (by hash OR filename)
+    db.get(`SELECT filename, file_hash FROM files WHERE user_id = ? AND (file_hash = ? OR filename = ?)`, 
+        [req.user.id, fileHash, originalname], 
         (err, row) => {
             if (row) {
                 // Check if the file actually exists on disk
@@ -208,7 +208,7 @@ app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => 
                 } else {
                     // File in DB but not on disk - remove from DB and continue with upload
                     console.log(`File ${row.filename} in DB but missing from disk - cleaning up DB`);
-                    db.run(`DELETE FROM files WHERE user_id = ? AND file_hash = ?`, [req.user.id, fileHash]);
+                    db.run(`DELETE FROM files WHERE user_id = ? AND (file_hash = ? OR filename = ?)`, [req.user.id, fileHash, originalname]);
                     // Continue to save the new file below
                 }
             }
