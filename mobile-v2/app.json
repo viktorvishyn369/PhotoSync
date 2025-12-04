@@ -19,7 +19,8 @@
       "deploymentTarget": "13.0",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "PhotoSync needs access to your photos to back them up to your secure private cloud.",
-        "NSPhotoLibraryAddUsageDescription": "PhotoSync needs permission to save restored photos to your library."
+        "NSPhotoLibraryAddUsageDescription": "PhotoSync needs permission to save restored photos to your library.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

@@ -385,7 +385,7 @@ export default function App() {
           
           const downloadPath = FileSystem.cacheDirectory + file.filename;
           const downloadRes = await FileSystem.downloadAsync(
-            `${SERVER_URL}/api/files/${file.filename}`,
+            `${getServerUrl()}/api/files/${file.filename}`,
             downloadPath,
             { headers: config.headers }
           );
