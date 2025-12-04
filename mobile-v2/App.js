@@ -1,6 +1,6 @@
 import 'react-native-get-random-values';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ScrollView, ActivityIndicator, Platform, Pressable, Button, Dimensions, SafeAreaView, KeyboardAvoidingView, Linking } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ScrollView, ActivityIndicator, Platform, Pressable, Button, Dimensions, SafeAreaView, KeyboardAvoidingView, Linking, Image } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy'; // Fixed: Use legacy import for downloadAsync support
 import * as SecureStore from 'expo-secure-store';
@@ -428,9 +428,10 @@ export default function App() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
         <ScrollView contentContainerStyle={{flexGrow: 1}}>
         <View style={styles.authHeader}>
-          <View style={styles.iconCircle}>
-            <Text style={styles.iconText}>🔐</Text>
-          </View>
+          <Image 
+            source={require('./assets/icon.png')} 
+            style={styles.appIcon}
+          />
           <Text style={styles.title}>PhotoSync</Text>
           <Text style={styles.subtitle}>Secure Cloud Backup for Your Memories</Text>
         </View>
@@ -768,17 +769,11 @@ const styles = StyleSheet.create({
     marginTop: 80,
     marginBottom: 60,
   },
-  iconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#5E35B1',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  iconText: {
-    fontSize: 50,
+  appIcon: {
+    width: 120,
+    height: 120,
+    borderRadius: 24,
+    marginBottom: 24,
   },
   title: {
     fontSize: 36,
