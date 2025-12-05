@@ -91,7 +91,8 @@ sudo journalctl -u photosync -f
 - Linux, macOS, or Windows
 
 ### Mobile
-- Android 5.0+ (API 21+)
+- **Android:** 5.0+ (API 21+)
+- **iOS:** 13.0+
 - Network access to server
 
 ## 📝 Privacy
