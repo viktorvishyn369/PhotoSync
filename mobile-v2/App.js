@@ -831,21 +831,42 @@ export default function App() {
 
             <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>2. Desktop (macOS / Linux) with Tray</Text>
             <Text style={styles.quickStepsText}>
-              Paste this into Terminal on your computer, then press Enter:{'\n'}
-              curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.sh | bash
+              Paste this into Terminal on your computer, then press Enter:
             </Text>
+            <TouchableOpacity
+              onPress={() => Clipboard.setString('curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.sh | bash')}
+              style={{ marginTop: 4 }}>
+              <Text style={styles.codeLine}>
+                curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.sh | bash
+              </Text>
+              <Text style={styles.codeHint}>Tap to copy</Text>
+            </TouchableOpacity>
 
             <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>3. Windows Desktop (PowerShell)</Text>
             <Text style={styles.quickStepsText}>
-              Paste this into PowerShell on your computer, then press Enter:{'\n'}
-              irm https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.ps1 | iex
+              Paste this into PowerShell on your computer, then press Enter:
             </Text>
+            <TouchableOpacity
+              onPress={() => Clipboard.setString('irm https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.ps1 | iex')}
+              style={{ marginTop: 4 }}>
+              <Text style={styles.codeLine}>
+                irm https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.ps1 | iex
+              </Text>
+              <Text style={styles.codeHint}>Tap to copy</Text>
+            </TouchableOpacity>
 
             <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>4. Headless Linux Server (no GUI)</Text>
             <Text style={styles.quickStepsText}>
-              Paste this into your Linux server shell, then press Enter:{'\n'}
-              curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install-server.sh | bash
+              Paste this into your Linux server shell, then press Enter:
             </Text>
+            <TouchableOpacity
+              onPress={() => Clipboard.setString('curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install-server.sh | bash')}
+              style={{ marginTop: 4 }}>
+              <Text style={styles.codeLine}>
+                curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install-server.sh | bash
+              </Text>
+              <Text style={styles.codeHint}>Tap to copy</Text>
+            </TouchableOpacity>
           </View>
           
           <View style={styles.settingsFooter}>
@@ -1419,6 +1440,20 @@ const styles = StyleSheet.create({
     color: '#CCCCCC',
     fontSize: 13,
     lineHeight: 22,
+  },
+  codeLine: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    backgroundColor: '#1A1A1A',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    marginTop: 2,
+  },
+  codeHint: {
+    color: '#888888',
+    fontSize: 11,
+    marginTop: 2,
   },
   // Server Setup Guide
   guideSteps: {
