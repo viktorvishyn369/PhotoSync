@@ -13,8 +13,10 @@ const crypto = require('crypto');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secure-secret-key-change-this';
-// Use absolute path for uploads - works regardless of where server is started
-const UPLOAD_DIR = process.env.UPLOAD_DIR || '/Users/vishyn369/PhotoSync/server/uploads';
+// Use home directory for universal path across any user/OS
+const os = require('os');
+const HOME_DIR = os.homedir();
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(HOME_DIR, 'PhotoSync', 'server', 'uploads');
 
 // Security & Middleware
 app.use(helmet()); // Sets various HTTP headers for security
@@ -22,13 +24,19 @@ app.use(cors());
 app.use(morgan('common')); // Logging
 app.use(express.json());
 
+// Ensure PhotoSync directory exists
+const PHOTOSYNC_DIR = path.join(HOME_DIR, 'PhotoSync', 'server');
+if (!fs.existsSync(PHOTOSYNC_DIR)) {
+    fs.mkdirSync(PHOTOSYNC_DIR, { recursive: true });
+}
+
 // Ensure upload directory exists
 if (!fs.existsSync(UPLOAD_DIR)) {
-    fs.mkdirSync(UPLOAD_DIR);
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
 
 // Database Setup
-const DB_PATH = process.env.DB_PATH || '/Users/vishyn369/PhotoSync/server/backup.db';
+const DB_PATH = process.env.DB_PATH || path.join(PHOTOSYNC_DIR, 'backup.db');
 const db = new sqlite3.Database(DB_PATH, (err) => {
     if (err) console.error('DB Error:', err.message);
     else console.log(`Connected to SQLite database at ${DB_PATH}`);
