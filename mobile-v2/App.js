@@ -381,6 +381,8 @@ export default function App() {
       return;
     }
     
+    console.log('\n⬇️  ===== RESTORE TRACE START =====');
+    
     setStatus('Checking server files...');
     setProgress(0); // Reset progress
 
@@ -389,7 +391,7 @@ export default function App() {
       const config = await getAuthHeaders();
       const serverRes = await axios.get(`${getServerUrl()}/api/files`, config);
       const serverFiles = serverRes.data.files;
-      console.log(`Found ${serverFiles.length} files on server`);
+      console.log(`☁️  Server has ${serverFiles.length} files`);
 
       // 2. Get local device photos to check what already exists
       setStatus('Checking local photos...');
@@ -398,16 +400,33 @@ export default function App() {
         mediaType: ['photo', 'video'],
       });
       
+      console.log(`📱 Total assets on device: ${localAssets.assets.length}`);
+      
       // Create a set of local filenames (case-insensitive for comparison)
       const localFilenames = new Set();
+      const localDuplicates = {};
+      
       for (const asset of localAssets.assets) {
         const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
         const filename = assetInfo.filename || asset.filename;
+        const normalizedFilename = filename.toLowerCase();
+        
+        // Track duplicates
+        if (localDuplicates[normalizedFilename]) {
+          localDuplicates[normalizedFilename]++;
+        } else {
+          localDuplicates[normalizedFilename] = 1;
+        }
+        
         // Normalize to lowercase for case-insensitive comparison
-        localFilenames.add(filename.toLowerCase());
+        localFilenames.add(normalizedFilename);
       }
       
-      console.log(`Local device has ${localFilenames.size} photos/videos`);
+      const deviceDups = Object.entries(localDuplicates).filter(([_, count]) => count > 1);
+      console.log(`📊 Unique filenames on device: ${localFilenames.size}`);
+      if (deviceDups.length > 0) {
+        console.log(`⚠️  Device has ${deviceDups.length} duplicate filenames`);
+      }
       
       if (serverFiles.length === 0) {
         setStatus('No files on server to download.');
@@ -528,6 +547,15 @@ export default function App() {
           console.log(`Gallery save error: ${galleryError.message}`);
         }
       }
+      
+      console.log('\n📊 ===== RESTORE SUMMARY =====');
+      console.log(`Server files: ${serverFiles.length}`);
+      console.log(`Device assets before: ${localAssets.assets.length}`);
+      console.log(`Unique filenames on device: ${localFilenames.size}`);
+      console.log(`Marked for download: ${toDownload.length}`);
+      console.log(`Successfully downloaded: ${successCount}`);
+      console.log(`Failed downloads: ${toDownload.length - successCount}`);
+      console.log('===== END RESTORE TRACE =====\n');
       
       setStatus(`Restore Complete! ${successCount}/${toDownload.length} files downloaded.`);
       setProgress(0); // Reset progress after completion
