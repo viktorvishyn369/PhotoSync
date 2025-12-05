@@ -825,7 +825,7 @@ export default function App() {
             <TouchableOpacity 
               style={styles.setupGuideBtn}
               onPress={() => {
-                Linking.openURL('https://github.com/viktorvishyn369/PhotoSync#quick-start');
+                Linking.openURL('https://github.com/viktorvishyn369/PhotoSync/blob/main/README.md#quick-start');
               }}>
               <Text style={styles.setupGuideBtnText}>📚 Open Setup Guide</Text>
             </TouchableOpacity>
