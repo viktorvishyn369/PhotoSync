@@ -36,6 +36,17 @@ class Updater {
         res.on('end', () => {
           try {
             const release = JSON.parse(data);
+            
+            // Check if release exists and has tag_name
+            if (!release || !release.tag_name) {
+              console.log('ℹ️  No releases found on GitHub yet');
+              resolve({
+                available: false,
+                version: CURRENT_VERSION
+              });
+              return;
+            }
+            
             const latestVersion = release.tag_name.replace('v', '');
             
             console.log(`Current version: ${CURRENT_VERSION}`);

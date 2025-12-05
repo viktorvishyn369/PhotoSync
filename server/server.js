@@ -77,13 +77,18 @@ db.serialize(() => {
     
     // Clean up database on startup - remove entries for files that don't exist
     setTimeout(() => {
-        db.all(`SELECT user_id, filename FROM files`, [], (err, rows) => {
+        db.all(`
+            SELECT f.user_id, f.filename, d.device_uuid 
+            FROM files f
+            JOIN devices d ON f.user_id = d.user_id
+        `, [], (err, rows) => {
             if (err) return console.error('Cleanup error:', err);
             
             let cleaned = 0;
             rows.forEach(row => {
-                const userDir = path.join(UPLOAD_DIR, row.user_id.toString());
-                const filePath = path.join(userDir, row.filename);
+                // Files are stored by device_uuid, not user_id
+                const deviceDir = path.join(UPLOAD_DIR, row.device_uuid);
+                const filePath = path.join(deviceDir, row.filename);
                 
                 if (!fs.existsSync(filePath)) {
                     db.run(`DELETE FROM files WHERE user_id = ? AND filename = ?`, 
