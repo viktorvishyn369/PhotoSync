@@ -46,23 +46,41 @@ export default function App() {
       hardwareId = await Application.getIosIdForVendorAsync() || '';
     }
     
-    // If we have email and password, generate deterministic UUID
-    if (userEmail && userPassword && hardwareId) {
-      // Create deterministic UUID from email+password+hardwareId
-      const namespace = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'; // Standard UUID namespace
-      const combinedString = `${userEmail}:${userPassword}:${hardwareId}`;
-      const uuid = uuidv5(combinedString, namespace);
-      await SecureStore.setItemAsync('device_uuid', uuid);
-      return uuid;
+    // If we have email and hardware ID, use deterministic UUID
+    if (userEmail && hardwareId) {
+      // Create storage key based on email+hardware (without password for security)
+      const storageKey = `device_uuid_${userEmail}_${hardwareId}`;
+      
+      // Check if we already have UUID for this user+device combination
+      let existingUuid = await SecureStore.getItemAsync(storageKey);
+      if (existingUuid) {
+        console.log('Using existing UUID for', userEmail, ':', existingUuid);
+        return existingUuid;
+      }
+      
+      // Generate new deterministic UUID from email+password+hardwareId
+      if (userPassword) {
+        const namespace = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'; // Standard UUID namespace
+        const combinedString = `${userEmail}:${userPassword}:${hardwareId}`;
+        const uuid = uuidv5(combinedString, namespace);
+        
+        // Store with user+device specific key
+        await SecureStore.setItemAsync(storageKey, uuid);
+        console.log('Generated new deterministic UUID for', userEmail, ':', uuid);
+        return uuid;
+      }
     }
     
-    // Otherwise, check if we already have a stored UUID
-    let uuid = await SecureStore.getItemAsync('device_uuid');
-    if (!uuid) {
-      // Fallback: generate random UUID if no credentials provided
-      uuid = uuidv4();
-      await SecureStore.setItemAsync('device_uuid', uuid);
+    // Fallback: check generic device_uuid key
+    let existingUuid = await SecureStore.getItemAsync('device_uuid');
+    if (existingUuid) {
+      return existingUuid;
     }
+    
+    // Last resort: generate random UUID
+    const uuid = uuidv4();
+    await SecureStore.setItemAsync('device_uuid', uuid);
+    console.log('Generated new random UUID:', uuid);
     return uuid;
   };
 
