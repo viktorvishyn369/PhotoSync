@@ -817,25 +817,34 @@ export default function App() {
           </View>
           
           <View style={styles.settingsCard}>
-            <Text style={styles.settingsTitle}>📖 Setup Server</Text>
+            <Text style={styles.settingsTitle}>📖 Quick Start (on your computer)</Text>
             <Text style={styles.settingsDescriptionSmall}>
-              Need help? Tap button to open guide:
+              Run these commands on your Mac / PC / server. Not on the phone.
             </Text>
-            
-            <TouchableOpacity 
-              style={styles.setupGuideBtn}
-              onPress={() => {
-                Linking.openURL('https://github.com/viktorvishyn369/PhotoSync/blob/main/README.md#quick-start');
-              }}>
-              <Text style={styles.setupGuideBtnText}>📚 Open Setup Guide</Text>
-            </TouchableOpacity>
-            
-            <Text style={styles.quickStepsTitle}>Quick Steps:</Text>
+
+            <Text style={styles.quickStepsTitle}>1. Open Terminal / Command Prompt</Text>
             <Text style={styles.quickStepsText}>
-              1. Open Terminal/PowerShell{'\n'}
-              2. Copy command from guide{'\n'}
-              3. Paste & press Enter{'\n'}
-              4. Done! Server starts automatically
+              • Mac: Cmd + Space → type "Terminal" → Enter{'\n'}
+              • Windows: Win + R → type "powershell" → Enter{'\n'}
+              • Linux: Ctrl + Alt + T
+            </Text>
+
+            <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>2. Desktop (macOS / Linux) with Tray</Text>
+            <Text style={styles.quickStepsText}>
+              Paste this into Terminal on your computer, then press Enter:{'\n'}
+              curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.sh | bash
+            </Text>
+
+            <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>3. Windows Desktop (PowerShell)</Text>
+            <Text style={styles.quickStepsText}>
+              Paste this into PowerShell on your computer, then press Enter:{'\n'}
+              irm https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.ps1 | iex
+            </Text>
+
+            <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>4. Headless Linux Server (no GUI)</Text>
+            <Text style={styles.quickStepsText}>
+              Paste this into your Linux server shell, then press Enter:{'\n'}
+              curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install-server.sh | bash
             </Text>
           </View>
           
