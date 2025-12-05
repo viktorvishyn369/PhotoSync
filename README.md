@@ -8,6 +8,14 @@ Secure, private photo backup system. Your photos, your server, your control.
 
 ### 1️⃣ Install Server (Choose Your Platform)
 
+**First, open Terminal/Command Prompt:**
+
+- **Mac:** Press `Cmd + Space`, type "Terminal", press Enter
+- **Windows:** Press `Win + R`, type "powershell", press Enter
+- **Linux:** Press `Ctrl + Alt + T`
+
+**Then, copy & paste one of these commands:**
+
 #### Desktop (macOS, Windows, Linux) - With GUI Tray
 ```bash
 # macOS / Linux
@@ -16,6 +24,8 @@ curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/inst
 # Windows (PowerShell as Admin)
 irm https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.ps1 | iex
 ```
+
+**Tip:** Right-click in Terminal/PowerShell to paste, then press Enter!
 
 #### Linux Server (Headless) - No GUI
 ```bash

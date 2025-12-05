@@ -759,54 +759,26 @@ export default function App() {
           </View>
           
           <View style={styles.settingsCard}>
-            <Text style={styles.settingsTitle}>📖 How to Setup Server</Text>
-            <Text style={styles.settingsDescription}>
-              Don't have a server yet? Follow these simple steps:
+            <Text style={styles.settingsTitle}>📖 Setup Server</Text>
+            <Text style={styles.settingsDescriptionSmall}>
+              Need help? Tap button to open guide:
             </Text>
             
-            <View style={styles.guideSteps}>
-              <View style={styles.guideStep}>
-                <Text style={styles.guideStepNumber}>1</Text>
-                <View style={styles.guideStepContent}>
-                  <Text style={styles.guideStepTitle}>Open Terminal/CMD</Text>
-                  <Text style={styles.guideStepDesc}>
-                    • Mac: Press Cmd+Space, type "Terminal"{'\n'}
-                    • Windows: Press Win+R, type "powershell"{'\n'}
-                    • Linux: Press Ctrl+Alt+T
-                  </Text>
-                </View>
-              </View>
-              
-              <View style={styles.guideStep}>
-                <Text style={styles.guideStepNumber}>2</Text>
-                <View style={styles.guideStepContent}>
-                  <Text style={styles.guideStepTitle}>Get the command</Text>
-                  <TouchableOpacity 
-                    style={styles.copyLinkBtn}
-                    onPress={() => {
-                      Linking.openURL('https://github.com/viktorvishyn369/PhotoSync#quick-start');
-                    }}>
-                    <Text style={styles.copyLinkText}>Open Setup Guide</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-              
-              <View style={styles.guideStep}>
-                <Text style={styles.guideStepNumber}>3</Text>
-                <View style={styles.guideStepContent}>
-                  <Text style={styles.guideStepTitle}>Copy & paste</Text>
-                  <Text style={styles.guideStepDesc}>Right-click in Terminal/PowerShell to paste</Text>
-                </View>
-              </View>
-              
-              <View style={styles.guideStep}>
-                <Text style={styles.guideStepNumber}>4</Text>
-                <View style={styles.guideStepContent}>
-                  <Text style={styles.guideStepTitle}>Press Enter</Text>
-                  <Text style={styles.guideStepDesc}>Server installs automatically!</Text>
-                </View>
-              </View>
-            </View>
+            <TouchableOpacity 
+              style={styles.setupGuideBtn}
+              onPress={() => {
+                Linking.openURL('https://github.com/viktorvishyn369/PhotoSync#quick-start');
+              }}>
+              <Text style={styles.setupGuideBtnText}>📚 Open Setup Guide</Text>
+            </TouchableOpacity>
+            
+            <Text style={styles.quickStepsTitle}>Quick Steps:</Text>
+            <Text style={styles.quickStepsText}>
+              1. Open Terminal/PowerShell{'\n'}
+              2. Copy command from guide{'\n'}
+              3. Paste & press Enter{'\n'}
+              4. Done! Server starts automatically
+            </Text>
           </View>
           
           <View style={styles.settingsFooter}>
@@ -1215,8 +1187,8 @@ const styles = StyleSheet.create({
   // Settings screen
   settingsCard: {
     backgroundColor: '#1A1A1A',
-    padding: 24,
-    borderRadius: 16,
+    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#2A2A2A',
   },
@@ -1356,6 +1328,30 @@ const styles = StyleSheet.create({
   boldText: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  setupGuideBtn: {
+    backgroundColor: THEME.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  setupGuideBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  quickStepsTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  quickStepsText: {
+    color: '#CCCCCC',
+    fontSize: 13,
+    lineHeight: 22,
   },
   // Server Setup Guide
   guideSteps: {
