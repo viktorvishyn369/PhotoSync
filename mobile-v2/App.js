@@ -213,7 +213,10 @@ export default function App() {
   };
 
   const getAuthHeaders = async () => {
-    const uuid = await getDeviceUUID();
+    // Always use the same user+device UUID that was used at login
+    // so that X-Device-UUID matches the device_uuid inside the JWT
+    const storedEmail = await SecureStore.getItemAsync('user_email');
+    const uuid = await getDeviceUUID(storedEmail);
     return {
       headers: {
         'Authorization': `Bearer ${token}`,
