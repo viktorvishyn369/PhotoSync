@@ -107,10 +107,25 @@ See [PRIVACY_POLICY.md](PRIVACY_POLICY.md)
 ## 🆘 Troubleshooting
 
 ### Can't connect from mobile app
-- Check server is running
-- Verify firewall allows port 3000
-- Use correct local IP (not localhost)
-- Ensure mobile and server on same network
+
+**For Local Server (same WiFi network):**
+1. Find your server's local IP:
+   - **Mac/Linux:** `ifconfig | grep "inet " | grep -v 127.0.0.1`
+   - **Windows:** `ipconfig` (look for IPv4 Address)
+2. Use this IP in app: `http://192.168.1.XXX:3000`
+3. ❌ **Don't use:** `localhost` or `127.0.0.1` (won't work from phone!)
+4. ✅ **Use:** Your actual local IP like `192.168.1.100`
+5. Ensure phone and server on **same WiFi network**
+
+**For Remote Server (internet/VPS):**
+1. Use your public IP or domain: `http://YOUR_PUBLIC_IP:3000`
+2. Make sure port 3000 is open in firewall
+3. If using domain: `http://yourdomain.com:3000`
+
+**Common issues:**
+- Server not running? Check tray icon or terminal
+- Firewall blocking? Allow port 3000
+- Wrong network? Connect phone to same WiFi as server
 
 ### Port 3000 already in use
 ```bash
