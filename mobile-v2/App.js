@@ -101,8 +101,11 @@ export default function App() {
     if (savedType) setServerType(savedType);
     if (savedRemoteIp) setRemoteIp(savedRemoteIp);
     
-    // Load device UUID
-    const uuid = await getDeviceUUID();
+    // Load stored email to get correct UUID
+    const storedEmail = await SecureStore.getItemAsync('user_email');
+    
+    // Load device UUID (with email if available)
+    const uuid = await getDeviceUUID(storedEmail);
     setDeviceUuid(uuid);
     
     const storedToken = await SecureStore.getItemAsync('auth_token');
@@ -117,6 +120,14 @@ export default function App() {
   };
 
   const handleAuth = async (type) => {
+    console.log('handleAuth called:', type);
+    console.log('Email:', email, 'Password:', password ? '***' : 'empty');
+    
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter email and password');
+      return;
+    }
+    
     setLoading(true);
     try {
       // Save server settings
@@ -126,7 +137,9 @@ export default function App() {
       }
       
       // Generate deterministic UUID based on email+password+hardware ID
+      console.log('Generating UUID...');
       const deviceId = await getDeviceUUID(email, password);
+      console.log('UUID generated:', deviceId);
       setDeviceUuid(deviceId); // Update state with new UUID
       const endpoint = type === 'register' ? '/api/register' : '/api/login';
       const SERVER_URL = getServerUrl();
@@ -146,6 +159,7 @@ export default function App() {
       if (type === 'login') {
         const { token, userId } = res.data;
         await SecureStore.setItemAsync('auth_token', token);
+        await SecureStore.setItemAsync('user_email', email); // Save email for UUID retrieval
         if (userId) {
           await SecureStore.setItemAsync('user_id', String(userId));
           setUserId(userId);
