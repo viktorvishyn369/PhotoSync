@@ -742,6 +742,53 @@ export default function App() {
           </View>
           
           <View style={styles.settingsCard}>
+            <Text style={styles.settingsTitle}>📖 How to Setup Server</Text>
+            <Text style={styles.settingsDescription}>
+              Don't have a server yet? Follow these simple steps:
+            </Text>
+            
+            <View style={styles.guideSteps}>
+              <View style={styles.guideStep}>
+                <Text style={styles.guideStepNumber}>1</Text>
+                <View style={styles.guideStepContent}>
+                  <Text style={styles.guideStepTitle}>Copy the link</Text>
+                  <TouchableOpacity 
+                    style={styles.copyLinkBtn}
+                    onPress={() => {
+                      Linking.openURL('https://github.com/viktorvishyn369/PhotoSync#quick-start');
+                    }}>
+                    <Text style={styles.copyLinkText}>Open Setup Guide</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <View style={styles.guideStep}>
+                <Text style={styles.guideStepNumber}>2</Text>
+                <View style={styles.guideStepContent}>
+                  <Text style={styles.guideStepTitle}>Choose your device</Text>
+                  <Text style={styles.guideStepDesc}>Desktop (Mac/Windows/Linux) or Server</Text>
+                </View>
+              </View>
+              
+              <View style={styles.guideStep}>
+                <Text style={styles.guideStepNumber}>3</Text>
+                <View style={styles.guideStepContent}>
+                  <Text style={styles.guideStepTitle}>Copy & paste command</Text>
+                  <Text style={styles.guideStepDesc}>Paste in Terminal (Mac/Linux) or PowerShell (Windows)</Text>
+                </View>
+              </View>
+              
+              <View style={styles.guideStep}>
+                <Text style={styles.guideStepNumber}>4</Text>
+                <View style={styles.guideStepContent}>
+                  <Text style={styles.guideStepTitle}>Press Enter</Text>
+                  <Text style={styles.guideStepDesc}>Server will install and start automatically!</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+          
+          <View style={styles.settingsCard}>
             <Text style={styles.settingsTitle}>About</Text>
             <Text style={styles.settingsDescription}>
               Self-hosted photo backup. Your photos stay on your server.
@@ -1226,6 +1273,53 @@ const styles = StyleSheet.create({
   },
   boldText: {
     color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  // Server Setup Guide
+  guideSteps: {
+    marginTop: 16,
+    gap: 16,
+  },
+  guideStep: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  guideStepNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: THEME.primary,
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    lineHeight: 32,
+  },
+  guideStepContent: {
+    flex: 1,
+  },
+  guideStepTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  guideStepDesc: {
+    color: '#AAAAAA',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  copyLinkBtn: {
+    backgroundColor: THEME.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  copyLinkText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '600',
   },
   // Resources
