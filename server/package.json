@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "update": "node -e \"require('./updater').downloadAndInstall()\"",
+    "check-update": "node -e \"require('./updater').checkForUpdates().then(r => console.log(r))\"",
     "install-linux": "sudo bash install-linux.sh",
     "install-macos": "bash install-macos.sh",
     "test": "echo \"Error: no test specified\" && exit 1"

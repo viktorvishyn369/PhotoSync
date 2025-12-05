@@ -9,6 +9,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const crypto = require('crypto');
+const updater = require('./updater');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -301,4 +302,12 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🚀 Secure Backup Server running on 0.0.0.0:${PORT}`);
     console.log(`📁 Upload directory: ${UPLOAD_DIR}`);
     console.log(`💾 Database: ${DB_PATH}\n`);
+    
+    // Start auto-update checker
+    updater.startAutoCheck((result) => {
+        if (result.available) {
+            console.log(`\n✨ Update available: v${result.version}`);
+            console.log(`Run 'npm run update' to install\n`);
+        }
+    });
 });

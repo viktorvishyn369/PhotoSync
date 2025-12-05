@@ -81,6 +81,33 @@ sudo journalctl -u photosync -f
 - Use the tray icon menu to Start/Stop/Restart
 - Or run manually: `cd ~/PhotoSync/server && node server.js`
 
+## 🔄 Auto-Updates
+
+PhotoSync automatically checks for updates every 24 hours.
+
+**Check for updates manually:**
+```bash
+cd ~/PhotoSync/server
+npm run check-update
+```
+
+**Install update:**
+```bash
+cd ~/PhotoSync/server
+npm run update
+```
+
+The server will:
+1. ✅ Create backup of current version
+2. ✅ Download latest version from GitHub
+3. ✅ Install dependencies
+4. ✅ Notify you to restart
+
+**Update notifications:**
+- Server logs show when updates are available
+- Tray app shows notification (if running)
+- No automatic restart - you control when to update
+
 ## 🔒 Security
 
 - **Device UUID binding**: Each device has unique UUID based on email + password + hardware ID
