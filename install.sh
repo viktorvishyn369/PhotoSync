@@ -71,8 +71,11 @@ echo -e "${BLUE}[2/5]${NC} Downloading PhotoSync..."
 INSTALL_DIR="$HOME/PhotoSync"
 
 if [ -d "$INSTALL_DIR" ]; then
-    echo -e "${YELLOW}⚠${NC}  PhotoSync directory exists, updating..."
+    echo -e "${YELLOW}⚠${NC}  PhotoSync directory exists, resetting and updating..."
     cd "$INSTALL_DIR"
+    # Discard any local changes (including generated lockfiles) so updates are reliable
+    git reset --hard HEAD >/dev/null 2>&1 || true
+    git clean -fd >/dev/null 2>&1 || true
     git pull
 else
     git clone https://github.com/viktorvishyn369/PhotoSync.git "$INSTALL_DIR"
