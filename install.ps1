@@ -6,6 +6,13 @@ Write-Host "║           PhotoSync Server - Installer            ║" -Foregrou
 Write-Host "╚════════════════════════════════════════════════════╝" -ForegroundColor Blue
 Write-Host ""
 
+# Allow this process to run npm.ps1 and other helper scripts without changing system-wide policy
+try {
+    Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force -ErrorAction SilentlyContinue
+} catch {
+    Write-Host "⚠  Could not change execution policy for this session. If you see npm.ps1 policy errors, run PowerShell as Administrator and try again." -ForegroundColor Yellow
+}
+
 # Check if Node.js is installed
 Write-Host "[1/5] Checking Node.js..." -ForegroundColor Blue
 if (!(Get-Command node -ErrorAction SilentlyContinue)) {
@@ -147,7 +154,16 @@ if (Test-Path $installDir) {
     Set-Location $installDir
     git pull
 } else {
-    git clone https://github.com/viktorvishyn369/PhotoSync.git $installDir
+    try {
+        git clone https://github.com/viktorvishyn369/PhotoSync.git $installDir
+    } catch {
+        Write-Host "✗ Failed to clone repository from GitHub" -ForegroundColor Red
+        Write-Host "   Error: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "" 
+        Write-Host "Please check that this machine can reach https://github.com in a browser and that DNS/network are working, then run this installer again." -ForegroundColor Yellow
+        Read-Host "Press Enter to close this window"
+        exit 1
+    }
     Set-Location $installDir
 }
 Write-Host "✓ Downloaded to $installDir" -ForegroundColor Green
