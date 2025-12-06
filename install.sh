@@ -33,30 +33,34 @@ echo -e "${GREEN}✓${NC} Detected: $PLATFORM"
 echo ""
 
 # Check if Node.js is installed
-echo -e "${BLUE}[1/5]${NC} Checking Node.js..."
+echo -e "${BLUE}[1/6]${NC} Checking Node.js..."
 if ! command -v node &> /dev/null; then
     echo -e "${YELLOW}⚠${NC}  Node.js not found. Installing..."
     
     if [ "$PLATFORM" = "Mac" ]; then
         # Install Homebrew if not installed
         if ! command -v brew &> /dev/null; then
-            echo -e "${YELLOW}⚠${NC}  Installing Homebrew..."
+            echo -e "${YELLOW}⚠${NC}  Homebrew not found. Installing Homebrew..."
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
         fi
+        echo -e "${BLUE}→${NC} Using Homebrew to install Node.js"
         brew install node
     else
         # Linux - try to detect package manager
         if command -v apt-get &> /dev/null; then
+            echo -e "${BLUE}→${NC} Using apt-get to install Node.js (NodeSource LTS)"
             curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
             sudo apt-get install -y nodejs
         elif command -v dnf &> /dev/null; then
+            echo -e "${BLUE}→${NC} Using dnf to install Node.js (NodeSource LTS)"
             curl -fsSL https://rpm.nodesource.com/setup_lts.x | sudo bash -
             sudo dnf install -y nodejs
         elif command -v pacman &> /dev/null; then
-            sudo pacman -S nodejs npm
+            echo -e "${BLUE}→${NC} Using pacman to install Node.js + npm"
+            sudo pacman -S --noconfirm nodejs npm
         else
             echo -e "${RED}✗${NC} Could not install Node.js automatically"
-            echo -e "${YELLOW}⚠${NC}  Please install Node.js from: https://nodejs.org/"
+            echo -e "${YELLOW}⚠${NC}  Please install Node.js from: https://nodejs.org/ (LTS recommended), then rerun this script."
             exit 1
         fi
     fi
@@ -65,9 +69,47 @@ else
     echo -e "${GREEN}✓${NC} Node.js found: $(node -v)"
 fi
 
+# Check if Git is installed
+echo ""
+echo -e "${BLUE}[2/6]${NC} Checking Git..."
+if ! command -v git &> /dev/null; then
+    echo -e "${YELLOW}⚠${NC}  Git not found. Installing..."
+
+    if [ "$PLATFORM" = "Mac" ]; then
+        if command -v brew &> /dev/null; then
+            echo -e "${BLUE}→${NC} Using Homebrew to install Git"
+            brew install git
+        else
+            echo -e "${YELLOW}⚠${NC}  Homebrew not available. On macOS, Git is usually provided by Xcode Command Line Tools."
+            echo -e "${YELLOW}→${NC}  Please run: xcode-select --install"
+            echo -e "${YELLOW}   Then rerun this installer after Git is installed.${NC}"
+            exit 1
+        fi
+    else
+        if command -v apt-get &> /dev/null; then
+            echo -e "${BLUE}→${NC} Using apt-get to install Git"
+            sudo apt-get install -y git
+        elif command -v dnf &> /dev/null; then
+            echo -e "${BLUE}→${NC} Using dnf to install Git"
+            sudo dnf install -y git
+        elif command -v pacman &> /dev/null; then
+            echo -e "${BLUE}→${NC} Using pacman to install Git"
+            sudo pacman -S --noconfirm git
+        else
+            echo -e "${RED}✗${NC} Could not install Git automatically"
+            echo -e "${YELLOW}⚠${NC}  Please install Git manually from https://git-scm.com/ then rerun this script."
+            exit 1
+        fi
+    fi
+
+    echo -e "${GREEN}✓${NC} Git installed"
+else
+    echo -e "${GREEN}✓${NC} Git found: $(git --version)"
+fi
+
 # Clone repository
 echo ""
-echo -e "${BLUE}[2/5]${NC} Downloading PhotoSync..."
+echo -e "${BLUE}[3/6]${NC} Downloading PhotoSync..."
 INSTALL_DIR="$HOME/PhotoSync"
 
 if [ -d "$INSTALL_DIR" ]; then
@@ -85,7 +127,7 @@ echo -e "${GREEN}✓${NC} Downloaded to $INSTALL_DIR"
 
 # Install server dependencies
 echo ""
-echo -e "${BLUE}[3/5]${NC} Installing server dependencies..."
+echo -e "${BLUE}[4/6]${NC} Installing server dependencies..."
 cd server
 rm -f package-lock.json
 npm install --production
@@ -93,7 +135,7 @@ echo -e "${GREEN}✓${NC} Server dependencies installed"
 
 # Install tray dependencies
 echo ""
-echo -e "${BLUE}[4/5]${NC} Installing tray app dependencies..."
+echo -e "${BLUE}[5/6]${NC} Installing tray app dependencies..."
 cd ../server-tray
 rm -f package-lock.json
 npm install
@@ -101,7 +143,7 @@ echo -e "${GREEN}✓${NC} Tray app dependencies installed"
 
 # Start the tray app
 echo ""
-echo -e "${BLUE}[5/5]${NC} Starting PhotoSync Server..."
+echo -e "${BLUE}[6/6]${NC} Starting PhotoSync Server..."
 echo ""
 echo -e "${GREEN}✓${NC} Installation complete!"
 echo ""
