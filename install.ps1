@@ -90,15 +90,43 @@ Write-Host "[2/5] Checking Git..." -ForegroundColor Blue
 if (!(Get-Command git -ErrorAction SilentlyContinue)) {
     Write-Host "⚠  Git not found. Installing..." -ForegroundColor Yellow
     
+    $gitInstalled = $false
+
     if (Get-Command winget -ErrorAction SilentlyContinue) {
+        Write-Host "→ Using winget to install Git" -ForegroundColor Blue
         winget install Git.Git
+        $gitInstalled = (Get-Command git -ErrorAction SilentlyContinue) -ne $null
     }
     elseif (Get-Command choco -ErrorAction SilentlyContinue) {
+        Write-Host "→ Using Chocolatey to install Git" -ForegroundColor Blue
         choco install git -y
+        $gitInstalled = (Get-Command git -ErrorAction SilentlyContinue) -ne $null
     }
-    else {
+
+    if (-not $gitInstalled) {
         Write-Host "✗ Could not install Git automatically" -ForegroundColor Red
-        Write-Host "Please install Git from: https://git-scm.com/" -ForegroundColor Yellow
+        # Suggest architecture-specific Git-for-Windows installer
+        $arch = $env:PROCESSOR_ARCHITECTURE
+        if ($arch -eq "ARM64") {
+            $gitUrl = "https://github.com/git-for-windows/git/releases/download/v2.52.0.windows.1/Git-2.52.0-arm64.exe"
+        } else {
+            # Default to x64 build
+            $gitUrl = "https://github.com/git-for-windows/git/releases/download/v2.52.0.windows.1/Git-2.52.0-64-bit.exe"
+        }
+        Write-Host "Opening Git for Windows installer in your default browser (detected architecture: $arch):" -ForegroundColor Yellow
+        Write-Host "  $gitUrl" -ForegroundColor Yellow
+        try {
+            Start-Process $gitUrl
+        } catch {
+            Write-Host "(If the browser did not open, manually visit: $gitUrl)" -ForegroundColor Yellow
+        }
+        Write-Host "" 
+        Write-Host "In your browser (for architecture $arch):" -ForegroundColor Yellow
+        Write-Host "  1) Download and run the Git for Windows installer" -ForegroundColor Yellow
+        Write-Host "  2) Accept the defaults to add Git to PATH" -ForegroundColor Yellow
+        Write-Host "  3) Close this window and run this installer command again" -ForegroundColor Yellow
+        Write-Host "" 
+        Read-Host "Press Enter to close this window"
         exit 1
     }
     
