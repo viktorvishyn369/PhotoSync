@@ -172,14 +172,15 @@ Write-Host "✓ Downloaded to $installDir" -ForegroundColor Green
 Write-Host ""
 Write-Host "[4/5] Installing server dependencies..." -ForegroundColor Blue
 Set-Location server
-npm install --production
+# Use cmd.exe to run npm so we do not depend on npm.ps1 and execution policy
+cmd /c "npm install --production"
 Write-Host "✓ Server dependencies installed" -ForegroundColor Green
 
 # Install tray dependencies
 Write-Host ""
 Write-Host "[5/5] Installing tray app dependencies..." -ForegroundColor Blue
 Set-Location ..\server-tray
-npm install
+cmd /c "npm install"
 Write-Host "✓ Tray app dependencies installed" -ForegroundColor Green
 
 # Start the tray app
@@ -197,13 +198,26 @@ Write-Host "  • Open files location"
 Write-Host "  • Stop/Start/Restart server"
 Write-Host "  • Quit"
 Write-Host ""
-Write-Host "Server URL: http://YOUR_LOCAL_IP:3000"
+
+# Try to detect a useful local IPv4 address for the server URL
+try {
+    $ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -ne "127.0.0.1" -and $_.PrefixOrigin -ne "WellKnown" } | Select-Object -First 1 -ExpandProperty IPAddress)
+} catch {
+    $ip = $null
+}
+
+if ($ip) {
+    Write-Host "Server URL: http://$ip:3000"
+} else {
+    Write-Host "Server URL: http://YOUR_LOCAL_IP:3000"
+    Write-Host "(Could not auto-detect IP; run 'ipconfig' to find it.)" -ForegroundColor Yellow
+}
 Write-Host ""
 Write-Host "Note: Find your local IP with: ipconfig" -ForegroundColor Yellow
 Write-Host ""
 
-# Start the app
-npm start
+# Start the app via cmd so execution policy on npm.ps1 is irrelevant
+cmd /c "npm start"
 
 # Keep window open so user can read any errors
 Write-Host "" 
