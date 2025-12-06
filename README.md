@@ -21,9 +21,11 @@ Secure, private photo backup system. Your photos, your server, your control.
 # macOS / Linux
 curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.sh | bash
 
-# Windows (PowerShell, Windows 10 compatible)
-# Requirements: PowerShell, Internet access. The script will try to install Node.js and Git via winget/choco.
-# If your system does not have winget or choco, install Node.js LTS manually from https://nodejs.org/ first, then run this again.
+# Windows (PowerShell, Windows 10 compatible, x64 and ARM64)
+# Requirements: PowerShell, Internet access. The installer will try winget first.
+# If winget is missing, it will try to install Chocolatey (when run as Administrator) and then Node.js via choco.
+# On both x64 and ARM64, winget/choco pick the correct Node.js build automatically.
+# If everything fails, the installer opens the matching Node.js v24.11.1 MSI (x64 or ARM64) in your default browser and asks you to install it, then rerun.
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-RestMethod https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.ps1 | Invoke-Expression
 ```
 

@@ -51,8 +51,15 @@ if (!(Get-Command node -ErrorAction SilentlyContinue)) {
             Write-Host "  3) Run the install command again" -ForegroundColor Yellow
         }
         Write-Host "" 
-        $nodeUrl = "https://nodejs.org/en/download"
-        Write-Host "Opening Node.js LTS download page in your default browser:" -ForegroundColor Yellow
+        # Suggest architecture-specific Node.js 24.11.1 MSI
+        $arch = $env:PROCESSOR_ARCHITECTURE
+        if ($arch -eq "ARM64") {
+            $nodeUrl = "https://nodejs.org/dist/v24.11.1/node-v24.11.1-arm64.msi"
+        } else {
+            # Default to x64 build
+            $nodeUrl = "https://nodejs.org/dist/v24.11.1/node-v24.11.1-x64.msi"
+        }
+        Write-Host "Opening Node.js v24.11.1 installer in your default browser (detected architecture: $arch):" -ForegroundColor Yellow
         Write-Host "  $nodeUrl" -ForegroundColor Yellow
         try {
             Start-Process $nodeUrl
@@ -60,8 +67,8 @@ if (!(Get-Command node -ErrorAction SilentlyContinue)) {
             Write-Host "(If the browser did not open, manually visit: $nodeUrl)" -ForegroundColor Yellow
         }
         Write-Host "" 
-        Write-Host "In your browser:" -ForegroundColor Yellow
-        Write-Host "  1) Download the Windows LTS installer (.msi)" -ForegroundColor Yellow
+        Write-Host "In your browser (for architecture $arch):" -ForegroundColor Yellow
+        Write-Host "  1) Download the matching Windows LTS installer (.msi)" -ForegroundColor Yellow
         Write-Host "  2) Run it and complete the setup" -ForegroundColor Yellow
         Write-Host "  3) Close this window and run this installer command again" -ForegroundColor Yellow
         Write-Host "" 

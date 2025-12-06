@@ -847,7 +847,8 @@ export default function App() {
             <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>3. Windows Desktop (PowerShell)</Text>
             <Text style={styles.quickStepsText}>
               Open <Text style={styles.boldText}>PowerShell</Text> (not Command Prompt), paste this line, then press Enter.
-              If it says Node.js is missing and cannot be installed automatically, install <Text style={styles.boldText}>Node.js LTS</Text> from https://nodejs.org/ and run it again.
+              It works on both x64 and ARM64 Windows d the installer will pick the right Node.js build.
+              If it still says Node.js is missing and cannot be installed automatically, it will open the correct Node.js v24.11.1 installer for your architecture in the browser; install it and run this command again.
             </Text>
             <TouchableOpacity
               onPress={() => Clipboard.setString('[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-RestMethod https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.ps1 | Invoke-Expression')}
