@@ -8,7 +8,7 @@ Secure, private photo backup system. Your photos, your server, your control.
 
 ### 1️⃣ Install Server (Choose Your Platform)
 
-**First, open Terminal/Command Prompt:**
+**First, open a terminal:**
 
 - **Mac:** Press `Cmd + Space`, type "Terminal", press Enter
 - **Windows:** Press `Win + R`, type "powershell", press Enter
@@ -22,7 +22,8 @@ Secure, private photo backup system. Your photos, your server, your control.
 curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.sh | bash
 
 # Windows (PowerShell, Windows 10 compatible)
-# Run this inside PowerShell (not Command Prompt):
+# Requirements: PowerShell, Internet access. The script will try to install Node.js and Git via winget/choco.
+# If your system does not have winget or choco, install Node.js LTS manually from https://nodejs.org/ first, then run this again.
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-RestMethod https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.ps1 | Invoke-Expression
 ```
 
