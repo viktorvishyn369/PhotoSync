@@ -110,3 +110,8 @@ Write-Host ""
 
 # Start the app
 npm start
+
+# Keep window open so user can read any errors
+Write-Host "" 
+Write-Host "Installation script finished. If you saw any errors above, please screenshot or copy them before closing." -ForegroundColor Yellow
+Read-Host "Press Enter to close this window"
