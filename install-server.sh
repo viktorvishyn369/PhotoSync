@@ -87,6 +87,8 @@ After=network.target
 Type=simple
 User=$USER
 WorkingDirectory=$INSTALL_DIR/server
+Environment="UPLOAD_DIR=$INSTALL_DIR/server/uploads"
+Environment="DB_PATH=$INSTALL_DIR/server/backup.db"
 ExecStart=$(which node) server.js
 Restart=always
 RestartSec=10
