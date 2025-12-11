@@ -18,8 +18,8 @@ Secure, private photo backup system. Your photos, your server, your control.
 
 #### Desktop (macOS, Windows, Linux) - With GUI Tray
 ```bash
-# macOS / Linux
-curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.sh | bash
+# macOS / Linux (run with sudo so Node.js and dependencies can be installed)
+sudo curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.sh | bash
 
 # Windows (PowerShell, Windows 10 compatible, x64 and ARM64)
 # Requirements: PowerShell, Internet access. The installer will try winget first.
@@ -33,7 +33,7 @@ curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/inst
 
 #### Linux Server (Headless) - No GUI
 ```bash
-curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install-server.sh | bash
+sudo curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install-server.sh | bash
 ```
 
 ### 2️⃣ Install Mobile App

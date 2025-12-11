@@ -833,13 +833,13 @@ export default function App() {
 
             <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>2. Desktop (macOS / Linux) with Tray</Text>
             <Text style={styles.quickStepsText}>
-              Paste this into Terminal on your computer, then press Enter:
+              Paste this into Terminal on your computer, then press Enter (use sudo so Node.js can be installed):
             </Text>
             <TouchableOpacity
-              onPress={() => Clipboard.setString('curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.sh | bash')}
+              onPress={() => Clipboard.setString('sudo curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.sh | bash')}
               style={{ marginTop: 4 }}>
               <Text style={styles.codeLine}>
-                curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.sh | bash
+                sudo curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.sh | bash
               </Text>
               <Text style={styles.codeHint}>Tap to copy</Text>
             </TouchableOpacity>
@@ -861,13 +861,13 @@ export default function App() {
 
             <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>4. Headless Linux Server (no GUI)</Text>
             <Text style={styles.quickStepsText}>
-              Paste this into your Linux server shell, then press Enter:
+              Paste this into your Linux server shell, then press Enter (use sudo so the service can be installed):
             </Text>
             <TouchableOpacity
-              onPress={() => Clipboard.setString('curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install-server.sh | bash')}
+              onPress={() => Clipboard.setString('sudo curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install-server.sh | bash')}
               style={{ marginTop: 4 }}>
               <Text style={styles.codeLine}>
-                curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install-server.sh | bash
+                sudo curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install-server.sh | bash
               </Text>
               <Text style={styles.codeHint}>Tap to copy</Text>
             </TouchableOpacity>
