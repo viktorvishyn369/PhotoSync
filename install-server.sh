@@ -25,8 +25,37 @@ else
     SUDO="sudo"
 fi
 
+# Determine which user should run the systemd service.
+# When script is executed with sudo, $USER may be "root".
+SERVICE_USER="${SUDO_USER:-${USER:-$(whoami)}}"
+
+# Ensure Git is installed (required to clone/pull)
+echo ""
+echo -e "${BLUE}[1/7]${NC} Checking Git..."
+if ! command -v git &> /dev/null; then
+    echo -e "${YELLOW}⚠${NC}  Git not found. Installing..."
+    if command -v apt-get &> /dev/null; then
+        $SUDO apt-get update -y
+        $SUDO apt-get install -y git
+    elif command -v dnf &> /dev/null; then
+        $SUDO dnf install -y git
+    elif command -v yum &> /dev/null; then
+        $SUDO yum install -y git
+    elif command -v pacman &> /dev/null; then
+        $SUDO pacman -S --noconfirm git
+    else
+        echo -e "${RED}✗${NC} Could not install Git automatically"
+        echo -e "${YELLOW}⚠${NC}  Please install Git manually, then rerun this script."
+        exit 1
+    fi
+    echo -e "${GREEN}✓${NC} Git installed"
+else
+    echo -e "${GREEN}✓${NC} Git found: $(git --version)"
+fi
+
 # Check if Node.js is installed
-echo -e "${BLUE}[1/6]${NC} Checking Node.js..."
+echo ""
+echo -e "${BLUE}[2/7]${NC} Checking Node.js..."
 if ! command -v node &> /dev/null; then
     echo -e "${YELLOW}⚠${NC}  Node.js not found. Installing..."
     
@@ -41,7 +70,7 @@ if ! command -v node &> /dev/null; then
         curl -fsSL https://rpm.nodesource.com/setup_lts.x | $SUDO bash -
         $SUDO yum install -y nodejs
     elif command -v pacman &> /dev/null; then
-        $SUDO pacman -S nodejs npm
+        $SUDO pacman -S --noconfirm nodejs npm
     else
         echo -e "${RED}✗${NC} Could not install Node.js automatically"
         echo -e "${YELLOW}⚠${NC}  Please install Node.js from: https://nodejs.org/"
@@ -54,7 +83,7 @@ fi
 
 # Clone repository
 echo ""
-echo -e "${BLUE}[2/6]${NC} Downloading PhotoSync..."
+echo -e "${BLUE}[3/7]${NC} Downloading PhotoSync..."
 INSTALL_DIR="/opt/photosync"
 
 if [ -d "$INSTALL_DIR" ]; then
@@ -69,14 +98,14 @@ echo -e "${GREEN}✓${NC} Downloaded to $INSTALL_DIR"
 
 # Install server dependencies
 echo ""
-echo -e "${BLUE}[3/6]${NC} Installing server dependencies..."
+echo -e "${BLUE}[4/7]${NC} Installing server dependencies..."
 cd server
 $SUDO npm install --production
 echo -e "${GREEN}✓${NC} Server dependencies installed"
 
 # Create systemd service
 echo ""
-echo -e "${BLUE}[4/6]${NC} Creating systemd service..."
+echo -e "${BLUE}[5/7]${NC} Creating systemd service..."
 
 $SUDO tee /etc/systemd/system/photosync.service > /dev/null <<EOF
 [Unit]
@@ -85,7 +114,7 @@ After=network.target
 
 [Service]
 Type=simple
-User=$USER
+User=$SERVICE_USER
 WorkingDirectory=$INSTALL_DIR/server
 Environment="UPLOAD_DIR=$INSTALL_DIR/server/uploads"
 Environment="DB_PATH=$INSTALL_DIR/server/backup.db"
@@ -104,7 +133,7 @@ echo -e "${GREEN}✓${NC} Systemd service created"
 
 # Enable and start service
 echo ""
-echo -e "${BLUE}[5/6]${NC} Starting PhotoSync service..."
+echo -e "${BLUE}[6/7]${NC} Starting PhotoSync service..."
 $SUDO systemctl daemon-reload
 $SUDO systemctl enable photosync
 $SUDO systemctl restart photosync
@@ -112,7 +141,7 @@ echo -e "${GREEN}✓${NC} Service started and enabled"
 
 # Configure firewall
 echo ""
-echo -e "${BLUE}[6/6]${NC} Configuring firewall..."
+echo -e "${BLUE}[7/7]${NC} Configuring firewall..."
 if command -v ufw &> /dev/null; then
     $SUDO ufw allow 3000/tcp
     echo -e "${GREEN}✓${NC} UFW: Port 3000 opened"
