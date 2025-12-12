@@ -1,6 +1,6 @@
 import 'react-native-get-random-values';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ScrollView, ActivityIndicator, Platform, Pressable, Button, Dimensions, SafeAreaView, KeyboardAvoidingView, Linking, Image, Clipboard } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ScrollView, ActivityIndicator, Platform, Pressable, Button, Dimensions, SafeAreaView, KeyboardAvoidingView, Linking, Image, Clipboard, NativeModules } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy'; // Fixed: Use legacy import for downloadAsync support
 import * as SecureStore from 'expo-secure-store';
@@ -238,6 +238,21 @@ export default function App() {
     setStatus('Scanning for duplicate photos/videos on this device...');
 
     try {
+      // IMPORTANT: In Expo Go, react-native-blob-util is not linked and can crash even if wrapped
+      // in try/catch due to module initialization. Guard by checking NativeModules first.
+      const blobModulePresent = !!(
+        NativeModules.ReactNativeBlobUtil ||
+        NativeModules.RNBlobUtil ||
+        NativeModules.RNFetchBlob
+      );
+
+      if (!blobModulePresent) {
+        setStatus('Duplicate scan requires a development build (not Expo Go).');
+        Alert.alert('Development Build Required', 'Clean Duplicates uses native file hashing for reliability. Please install a development build (expo run:ios/android) and try again.');
+        setLoading(false);
+        return;
+      }
+
       let ReactNativeBlobUtil = null;
       try {
         const mod = require('react-native-blob-util');
