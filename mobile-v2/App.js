@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ScrollView, ActivityIndicator, Platform, Pressable, Button, Dimensions, SafeAreaView, KeyboardAvoidingView, Linking, Image, Clipboard } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy'; // Fixed: Use legacy import for downloadAsync support
-import * as Crypto from 'expo-crypto';
+import { sha256 } from 'js-sha256';
 import * as SecureStore from 'expo-secure-store';
 import * as Application from 'expo-application';
 import { v4 as uuidv4, v5 as uuidv5 } from 'uuid';
@@ -298,11 +298,7 @@ export default function App() {
             // Read as base64 and hash that canonical representation.
             // This still uniquely identifies the underlying bytes, without relying on atob/Buffer.
             const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-            const hashHex = await Crypto.digestStringAsync(
-              Crypto.CryptoDigestAlgorithm.SHA256,
-              base64,
-              { encoding: Crypto.CryptoEncoding.HEX }
-            );
+            const hashHex = sha256(base64);
 
             hashedCount++;
             if (hashedCount % 10 === 0) {
