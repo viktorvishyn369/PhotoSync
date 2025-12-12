@@ -1401,7 +1401,7 @@ export default function App() {
             disabled={loading}
             style={[styles.actionCard, styles.cleanupCard, loading && styles.disabledCard]}>
             <View style={styles.cardIcon}>
-              <Text style={styles.cardIconText}>🧹</Text>
+              <Text style={styles.cardIconText}>🗑️</Text>
             </View>
             <Text style={styles.cardTitle}>Clean Duplicates</Text>
             <Text style={styles.cardDescription}>Remove duplicate photos/videos on this device</Text>
