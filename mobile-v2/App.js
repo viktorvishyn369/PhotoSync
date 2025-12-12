@@ -1374,21 +1374,21 @@ export default function App() {
               <TouchableOpacity 
                 style={[styles.toggleBtn, serverType === 'local' && styles.toggleBtnActive]}
                 onPress={() => setServerType('local')}>
-                <Text style={[styles.toggleText, serverType === 'local' && styles.toggleTextActive]}>
+                <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.toggleText, serverType === 'local' && styles.toggleTextActive]}>
                   Local Network
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.toggleBtn, serverType === 'remote' && styles.toggleBtnActive]}
                 onPress={() => setServerType('remote')}>
-                <Text style={[styles.toggleText, serverType === 'remote' && styles.toggleTextActive]}>
+                <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.toggleText, serverType === 'remote' && styles.toggleTextActive]}>
                   Remote Server
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.toggleBtn, serverType === 'stealthcloud' && styles.toggleBtnActive]}
                 onPress={() => setServerType('stealthcloud')}>
-                <Text style={[styles.toggleText, serverType === 'stealthcloud' && styles.toggleTextActive]}>
+                <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.toggleText, serverType === 'stealthcloud' && styles.toggleTextActive]}>
                   StealthCloud
                 </Text>
               </TouchableOpacity>
@@ -1544,21 +1544,24 @@ export default function App() {
               <TouchableOpacity 
                 style={[styles.toggleBtn, serverType === 'local' && styles.toggleBtnActive]}
                 onPress={() => setServerType('local')}>
-                <Text style={[styles.toggleText, serverType === 'local' && styles.toggleTextActive]}>
+                <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.toggleText, serverType === 'local' && styles.toggleTextActive]}>
                   Local
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.toggleBtn, serverType === 'remote' && styles.toggleBtnActive]}
                 onPress={() => setServerType('remote')}>
-                <Text style={[styles.toggleText, serverType === 'remote' && styles.toggleTextActive]}>
+                <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.toggleText, serverType === 'remote' && styles.toggleTextActive]}>
                   Remote
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.toggleBtn, serverType === 'stealthcloud' && styles.toggleBtnActive]}
-                onPress={() => setServerType('stealthcloud')}>
-                <Text style={[styles.toggleText, serverType === 'stealthcloud' && styles.toggleTextActive]}>
+                onPress={async () => {
+                  setServerType('stealthcloud');
+                  await SecureStore.setItemAsync('server_type', 'stealthcloud');
+                }}>
+                <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.toggleText, serverType === 'stealthcloud' && styles.toggleTextActive]}>
                   StealthCloud
                 </Text>
               </TouchableOpacity>
@@ -1609,37 +1612,41 @@ export default function App() {
               <Text style={styles.serverInfoLabel}>Connected to:</Text>
               <Text style={styles.serverInfoText}>{getServerUrl()}</Text>
             </View>
-            
-            <TouchableOpacity 
-              style={styles.btnPrimary} 
-              onPress={async () => {
-                await SecureStore.setItemAsync('server_type', serverType);
-                if (serverType === 'remote') {
-                  await SecureStore.setItemAsync('remote_host', remoteHost);
-                } else if (serverType === 'local') {
-                  await SecureStore.setItemAsync('local_host', localHost);
-                }
-                Alert.alert('Saved', 'Server settings updated');
-                setView('home');
-              }}>
-              <Text style={styles.btnText}>Save Changes</Text>
-            </TouchableOpacity>
+
+            {serverType !== 'stealthcloud' && (
+              <TouchableOpacity 
+                style={styles.btnPrimary} 
+                onPress={async () => {
+                  await SecureStore.setItemAsync('server_type', serverType);
+                  if (serverType === 'remote') {
+                    await SecureStore.setItemAsync('remote_host', remoteHost);
+                  } else if (serverType === 'local') {
+                    await SecureStore.setItemAsync('local_host', localHost);
+                  }
+                  Alert.alert('Saved', 'Server settings updated');
+                  setView('home');
+                }}>
+                <Text style={styles.btnText}>Save Changes</Text>
+              </TouchableOpacity>
+            )}
           </View>
-          
-          <View style={styles.settingsCard}>
-            <Text style={styles.settingsTitle}>Server Setup</Text>
-            <Text style={styles.serverExplanationText}>
-              Follow the latest install steps on GitHub.
-            </Text>
-            <TouchableOpacity 
-              style={styles.setupGuideBtn}
-              onPress={() => openLink('https://github.com/viktorvishyn369/PhotoSync#-quick-start')}>
-              <Text style={styles.setupGuideBtnText}>Open README Instructions</Text>
-            </TouchableOpacity>
-            <Text style={styles.serverExplanationText}>
-              Includes prerequisites, one-line install, and troubleshooting.
-            </Text>
-          </View>
+
+          {serverType !== 'stealthcloud' && (
+            <View style={styles.settingsCard}>
+              <Text style={styles.settingsTitle}>Server Setup</Text>
+              <Text style={styles.serverExplanationText}>
+                Follow the latest install steps on GitHub.
+              </Text>
+              <TouchableOpacity 
+                style={styles.setupGuideBtn}
+                onPress={() => openLink('https://github.com/viktorvishyn369/PhotoSync#-quick-start')}>
+                <Text style={styles.setupGuideBtnText}>Open README Instructions</Text>
+              </TouchableOpacity>
+              <Text style={styles.serverExplanationText}>
+                Includes prerequisites, one-line install, and troubleshooting.
+              </Text>
+            </View>
+          )}
           
           <View style={styles.settingsFooter}>
             <Text style={styles.footerVersion}>PhotoSync v1.0.0</Text>
@@ -2018,7 +2025,7 @@ const styles = StyleSheet.create({
   },
   serverToggle: {
     flexDirection: 'row',
-    gap: 10,
+    gap: SCREEN_WIDTH < 380 ? 6 : 10,
     marginTop: 12,
   },
   serverExplanation: {
@@ -2036,12 +2043,15 @@ const styles = StyleSheet.create({
   },
   toggleBtn: {
     flex: 1,
-    padding: 12,
+    minHeight: SCREEN_WIDTH < 380 ? 40 : 44,
+    paddingVertical: SCREEN_WIDTH < 380 ? 8 : 10,
+    paddingHorizontal: SCREEN_WIDTH < 380 ? 6 : 10,
     borderRadius: 8,
     backgroundColor: '#1A1A1A',
     borderWidth: 2,
     borderColor: '#333333',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   toggleBtnActive: {
     backgroundColor: '#5E35B1',
@@ -2049,8 +2059,10 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     color: '#888888',
-    fontSize: 14,
+    fontSize: SCREEN_WIDTH < 380 ? 12 : 13,
     fontWeight: '600',
+    textAlign: 'center',
+    includeFontPadding: false,
   },
   toggleTextActive: {
     color: '#FFFFFF',
