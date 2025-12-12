@@ -234,6 +234,8 @@ export default function App() {
         setAuthMode('login');
         setView('home');
       } else {
+        // Save email so the next login is prefilled after registering
+        await SecureStore.setItemAsync('user_email', email);
         Alert.alert('Success', 'Account created! Please login.');
         setAuthMode('login');
         setConfirmPassword('');
