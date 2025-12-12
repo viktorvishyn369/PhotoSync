@@ -130,11 +130,50 @@ The server will:
 
 ## 🔒 Security
 
-- **Device UUID binding**: Each device has unique UUID based on email + password + hardware ID
+- **Device UUID binding**: Each device uses a UUID derived from your login credentials (email + password) and stored locally for reuse.
 - **JWT authentication**: Tokens bound to device UUID
 - **Path validation**: Prevents directory traversal
 - **Isolated storage**: Each device has separate folder
 - **No cloud**: Everything runs locally on your network
+
+### Device UUID generation (mobile)
+
+The mobile app generates the device UUID as:
+
+```
+uuidv5("<email-lower>:<password>")
+```
+
+It is persisted in `expo-secure-store` so the same UUID is reused for backup/sync requests after login.
+
+Important notes:
+
+- **Same email + same password = same UUID** (even after reinstall)
+- If you **change your password**, the UUID will change
+- The server never tells the app to regenerate the UUID. The server only stores what the app sends.
+
+---
+
+## 🧹 Clean Duplicates (mobile)
+
+The **Clean Duplicates** feature finds and deletes duplicates by **content hash** (SHA-256), not by filename/date/metadata.
+
+How it works:
+
+- The app scans your photo/video library.
+- For each readable asset, it computes a SHA-256 hash.
+- Assets with the same hash are treated as duplicates.
+- The app **keeps the oldest** item in each duplicate group and deletes the newer ones.
+
+Limitations:
+
+- In **Expo Go**, native file hashing is not available, so Clean Duplicates requires a **development build**.
+- Some iOS assets may not be readable (e.g. iCloud “Optimize Storage” / `ph://` URIs), so they can be skipped.
+
+Deletion behavior:
+
+- **iOS**: deleted items go to **Photos → Recently Deleted**.
+- **Android**: deleted items are removed from the device (behavior depends on OEM/OS).
 
 ## 🌍 Requirements
 
