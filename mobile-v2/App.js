@@ -438,6 +438,8 @@ export default function App() {
           continue;
         }
       }
+
+      const duplicateGroups = Object.values(hashGroups).filter(group => group.length > 1);
       if (duplicateGroups.length === 0) {
         const noteParts = [];
         noteParts.push(`Analyzed ${hashedCount} file${hashedCount !== 1 ? 's' : ''}.`);
