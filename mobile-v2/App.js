@@ -936,7 +936,7 @@ export default function App() {
               ) : (
                 <Text style={styles.serverExplanationText}>
                   🌐 <Text style={styles.boldText}>Remote:</Text> Server anywhere on internet{'\n'}
-                  (e.g., cloud server or office computer)
+                  (e.g., cloud server or office computer — open port 3000 externally)
                 </Text>
               )}
             </View>
