@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ScrollView, ActivityIndicator, Platform, Pressable, Button, Dimensions, SafeAreaView, KeyboardAvoidingView, Linking, Image, Clipboard } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy'; // Fixed: Use legacy import for downloadAsync support
-import { sha256 } from 'js-sha256';
+import ReactNativeBlobUtil from 'react-native-blob-util';
 import * as SecureStore from 'expo-secure-store';
 import * as Application from 'expo-application';
 import { v4 as uuidv4, v5 as uuidv5 } from 'uuid';
@@ -274,6 +274,15 @@ export default function App() {
       let hashedCount = 0;
       let inspectFailed = 0;
       let hashSkipped = 0;
+      let hashSkippedLarge = 0;
+
+      const normalizePathForHashing = (uri) => {
+        if (!uri || typeof uri !== 'string') return null;
+        // iOS usually provides file:// URIs for local assets.
+        if (uri.startsWith('file://')) return uri.replace('file://', '');
+        // Android often uses content://; react-native-blob-util supports hashing URIs.
+        return uri;
+      };
 
       for (let i = 0; i < allAssets.assets.length; i++) {
         const asset = allAssets.assets[i];
@@ -291,11 +300,14 @@ export default function App() {
           continue;
         }
 
+        const hashTarget = normalizePathForHashing(uri);
+        if (!hashTarget) {
+          hashSkipped++;
+          continue;
+        }
+
         try {
-          // Read as base64 and hash that canonical representation.
-          // This uniquely identifies the underlying bytes without relying on atob/Buffer.
-          const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-          const hashHex = sha256(base64);
+          const hashHex = await ReactNativeBlobUtil.fs.hash(hashTarget, 'sha256');
 
           hashedCount++;
           if (hashedCount % 10 === 0) {
