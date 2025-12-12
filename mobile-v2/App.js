@@ -1488,8 +1488,7 @@ const styles = StyleSheet.create({
   statusText: {
     color: '#FFFFFF',
     fontSize: 16,
-    lineHeight: 20,
-    height: 40,
+    flexShrink: 1,
   },
   progressBar: {
     height: 4,
