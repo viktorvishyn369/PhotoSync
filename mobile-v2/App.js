@@ -1090,16 +1090,16 @@ export default function App() {
           
           <View style={styles.settingsCard}>
             <Text style={styles.settingsTitle}>� Server Setup</Text>
-            <Text style={styles.settingsDescription}>
-              Follow the latest installation instructions (macOS, Windows, Linux desktop, and Linux server) directly on GitHub so everything stays up-to-date.
+            <Text style={styles.serverExplanationText}>
+              Follow the latest install steps on GitHub.
             </Text>
             <TouchableOpacity 
               style={styles.setupGuideBtn}
               onPress={() => openLink('https://github.com/viktorvishyn369/PhotoSync#-quick-start')}>
               <Text style={styles.setupGuideBtnText}>Open README Instructions</Text>
             </TouchableOpacity>
-            <Text style={styles.quickStepsText}>
-              The README includes prerequisite download links, one-line install commands, and troubleshooting steps. We keep that page current so you always get the right instructions for your platform.
+            <Text style={styles.serverExplanationText}>
+              Includes prerequisites, one-line install, and troubleshooting.
             </Text>
           </View>
           
