@@ -22,8 +22,10 @@ const THEME = {
 
 export default function App() {
   const [view, setView] = useState('loading'); // loading, auth, home, settings
+  const [authMode, setAuthMode] = useState('login'); // login, register
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [serverType, setServerType] = useState('local'); // 'local' or 'remote'
   const [localHost, setLocalHost] = useState('');
   const [remoteHost, setRemoteHost] = useState('');
@@ -170,6 +172,17 @@ export default function App() {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
+
+    if (type === 'register') {
+      if (!confirmPassword) {
+        Alert.alert('Error', 'Please confirm your password');
+        return;
+      }
+      if (password !== confirmPassword) {
+        Alert.alert('Error', 'Passwords do not match');
+        return;
+      }
+    }
     
     setLoading(true);
     try {
@@ -218,9 +231,12 @@ export default function App() {
           setUserId(userId);
         }
         setToken(token);
+        setAuthMode('login');
         setView('home');
       } else {
         Alert.alert('Success', 'Account created! Please login.');
+        setAuthMode('login');
+        setConfirmPassword('');
       }
     } catch (error) {
       // Only log actual server errors, not Metro bundler noise
@@ -1083,14 +1099,55 @@ export default function App() {
             autoComplete="password"
             textContentType="password"
           />
+
+          {authMode === 'register' && (
+            <TextInput 
+              style={styles.input} 
+              placeholder="Confirm Password" 
+              placeholderTextColor="#888888"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              autoComplete="password"
+              textContentType="password"
+            />
+          )}
           
-          <TouchableOpacity style={styles.btnPrimary} onPress={() => handleAuth('login')} disabled={loading}>
-            <Text style={styles.btnText}>{loading ? 'Processing...' : 'Login'}</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.btnSecondary} onPress={() => handleAuth('register')} disabled={loading}>
-            <Text style={styles.btnTextSec}>Create Account</Text>
-          </TouchableOpacity>
+          {authMode === 'login' ? (
+            <>
+              <TouchableOpacity style={styles.btnPrimary} onPress={() => handleAuth('login')} disabled={loading}>
+                <Text style={styles.btnText}>{loading ? 'Processing...' : 'Login'}</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.btnSecondary}
+                onPress={() => {
+                  setAuthMode('register');
+                  setConfirmPassword('');
+                }}
+                disabled={loading}
+              >
+                <Text style={styles.btnTextSec}>Create Account</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity style={styles.btnPrimary} onPress={() => handleAuth('register')} disabled={loading}>
+                <Text style={styles.btnText}>{loading ? 'Processing...' : 'Create Account'}</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.btnSecondary}
+                onPress={() => {
+                  setAuthMode('login');
+                  setConfirmPassword('');
+                }}
+                disabled={loading}
+              >
+                <Text style={styles.btnTextSec}>Back to Login</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
         
         <View style={styles.authFooter}>
