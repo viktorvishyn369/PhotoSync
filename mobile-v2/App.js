@@ -152,6 +152,7 @@ export default function App() {
       const res = await axios.post(getServerUrl() + endpoint, {
         email,
         password,
+        device_uuid: deviceId,
         deviceUuid: deviceId,
         device_name: Platform.OS + ' ' + Platform.Version
       });
@@ -159,6 +160,7 @@ export default function App() {
       console.log('Attempting auth:', type, `${getServerUrl()}${endpoint}`, {
         email,
         password,
+        device_uuid: deviceId,
         deviceUuid: deviceId,
         device_name: Platform.OS + ' ' + Platform.Version
       });
