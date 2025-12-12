@@ -268,69 +268,46 @@ export default function App() {
         return uri;
       };
 
-      const sizeGroups = {};
-      let inspectSkipped = 0;
+      // Hash-only duplicate detection: hash every readable asset.
+      // No filename/date/size/metadata filtering is used for duplicate grouping.
+      const hashGroups = {};
+      let hashedCount = 0;
+      let inspectFailed = 0;
+      let hashSkipped = 0;
 
       for (let i = 0; i < allAssets.assets.length; i++) {
         const asset = allAssets.assets[i];
+        let info;
         try {
-          const info = await MediaLibrary.getAssetInfoAsync(asset.id);
-          const size = info && typeof info.size === 'number' ? info.size : 0;
-          if (!size || size <= 0) {
-            inspectSkipped++;
-            continue;
-          }
-          if (!sizeGroups[size]) sizeGroups[size] = [];
-          sizeGroups[size].push({ asset, info });
+          info = await MediaLibrary.getAssetInfoAsync(asset.id);
         } catch (e) {
-          inspectSkipped++;
+          inspectFailed++;
           continue;
         }
-      }
 
-      const candidateGroups = Object.values(sizeGroups).filter(group => group.length > 1);
-      if (candidateGroups.length === 0) {
-        setStatus('No exact duplicate photos or videos found on this device.');
-        Alert.alert('No Duplicates', 'No exact duplicate photos or videos were found.');
-        setLoading(false);
-        return;
-      }
+        const uri = getUriForHashing(info);
+        if (!uri) {
+          hashSkipped++;
+          continue;
+        }
 
-      const hashGroups = {};
-      let hashedCount = 0;
-      let hashSkipped = 0;
+        try {
+          // Read as base64 and hash that canonical representation.
+          // This uniquely identifies the underlying bytes without relying on atob/Buffer.
+          const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+          const hashHex = sha256(base64);
 
-      for (let g = 0; g < candidateGroups.length; g++) {
-        const group = candidateGroups[g];
-        for (let j = 0; j < group.length; j++) {
-          const { asset, info } = group[j];
-
-          const uri = getUriForHashing(info);
-          if (!uri) {
-            hashSkipped++;
-            continue;
+          hashedCount++;
+          if (hashedCount % 10 === 0) {
+            setStatus(`Hashing files... ${hashedCount} hashed`);
           }
 
-          try {
-            // Read as base64 and hash that canonical representation.
-            // This still uniquely identifies the underlying bytes, without relying on atob/Buffer.
-            const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-            const hashHex = sha256(base64);
-
-            hashedCount++;
-            if (hashedCount % 10 === 0) {
-              setStatus(`Hashing files... ${hashedCount} checked`);
-            }
-
-            // Group duplicates by exact content (SHA-256) regardless of filename/date.
-            // We intentionally do NOT include filename/creationTime in the grouping key.
-            const key = hashHex;
-            if (!hashGroups[key]) hashGroups[key] = [];
-            hashGroups[key].push({ asset, info });
-          } catch (e) {
-            hashSkipped++;
-            continue;
-          }
+          const key = hashHex;
+          if (!hashGroups[key]) hashGroups[key] = [];
+          hashGroups[key].push({ asset, info });
+        } catch (e) {
+          hashSkipped++;
+          continue;
         }
       }
 
@@ -338,11 +315,12 @@ export default function App() {
 
       if (duplicateGroups.length === 0) {
         const noteParts = [];
+        noteParts.push(`Hashed ${hashedCount} item${hashedCount !== 1 ? 's' : ''}.`);
         if (hashSkipped > 0) {
           noteParts.push(`Note: ${hashSkipped} item${hashSkipped !== 1 ? 's were' : ' was'} skipped because the file content could not be read (iCloud/unsupported URI/permissions).`);
         }
-        if (inspectSkipped > 0) {
-          noteParts.push(`${inspectSkipped} item${inspectSkipped !== 1 ? 's were' : ' was'} skipped because file size/metadata could not be read.`);
+        if (inspectFailed > 0) {
+          noteParts.push(`${inspectFailed} item${inspectFailed !== 1 ? 's were' : ' was'} skipped because asset info could not be read.`);
         }
         const note = noteParts.length > 0 ? `\n\n${noteParts.join('\n')}` : '';
         setStatus('No exact duplicate photos or videos found on this device.');
@@ -358,11 +336,12 @@ export default function App() {
       });
 
       const skippedParts = [];
+      skippedParts.push(`Hashed ${hashedCount} item${hashedCount !== 1 ? 's' : ''}.`);
       if (hashSkipped > 0) {
         skippedParts.push(`Skipped ${hashSkipped} item${hashSkipped !== 1 ? 's' : ''} (cannot read file bytes: iCloud/unsupported URI/permissions).`);
       }
-      if (inspectSkipped > 0) {
-        skippedParts.push(`Skipped ${inspectSkipped} item${inspectSkipped !== 1 ? 's' : ''} (could not read file size/metadata).`);
+      if (inspectFailed > 0) {
+        skippedParts.push(`Skipped ${inspectFailed} item${inspectFailed !== 1 ? 's' : ''} (could not read asset info).`);
       }
       const skippedNote = skippedParts.length > 0 ? `\n\n${skippedParts.join('\n')}` : '';
       const summaryMessage = `Found ${duplicateCount} duplicate photo/video item${duplicateCount !== 1 ? 's' : ''} in ${duplicateGroups.length} group${duplicateGroups.length !== 1 ? 's' : ''} on this device.\n\nWe will keep the oldest item in each group and delete the newer duplicates.` + skippedNote;
