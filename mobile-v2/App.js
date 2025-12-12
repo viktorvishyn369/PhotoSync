@@ -84,9 +84,14 @@ export default function App() {
 
   const getServerUrl = () => {
     const PORT = '3000';
-    // Always use the host from Settings (remoteIp) for both local and remote,
-    // so there is no hardcoded IP in the app. If not set, fall back to
-    // localhost as a dev placeholder.
+    // Local: expects host/ip (e.g. 192.168.1.100) and uses HTTP :3000
+    // Remote: expects a full base URL (e.g. https://photosync.example.com or https://1.2.3.4:3443)
+    if (serverType === 'remote') {
+      const raw = (remoteIp || '').trim();
+      if (!raw) return 'https://localhost';
+      return raw.endsWith('/') ? raw.slice(0, -1) : raw;
+    }
+
     const host = (remoteIp && remoteIp.trim().length > 0)
       ? remoteIp.trim()
       : 'localhost';
@@ -96,9 +101,11 @@ export default function App() {
   const checkLogin = async () => {
     // Load server settings
     const savedType = await SecureStore.getItemAsync('server_type');
+    const savedRemoteUrl = await SecureStore.getItemAsync('remote_url');
     const savedRemoteIp = await SecureStore.getItemAsync('remote_ip');
     if (savedType) setServerType(savedType);
-    if (savedRemoteIp) setRemoteIp(savedRemoteIp);
+    if (savedRemoteUrl) setRemoteIp(savedRemoteUrl);
+    else if (savedRemoteIp) setRemoteIp(savedRemoteIp);
     
     // Load stored email to get correct UUID
     const storedEmail = await SecureStore.getItemAsync('user_email');
@@ -144,7 +151,7 @@ export default function App() {
       // Save server settings
       await SecureStore.setItemAsync('server_type', serverType);
       if (serverType === 'remote') {
-        await SecureStore.setItemAsync('remote_ip', remoteIp);
+        await SecureStore.setItemAsync('remote_url', remoteIp);
       }
       
       // Device UUID is derived from email+password and persisted.
@@ -957,20 +964,20 @@ export default function App() {
               <>
                 <TextInput 
                   style={[styles.input, {marginTop: 12}]} 
-                  placeholder="Enter server IP or domain" 
+                  placeholder="Enter full server URL" 
                   placeholderTextColor="#666666"
                   value={remoteIp}
                   onChangeText={setRemoteIp}
                   autoCapitalize="none"
                 />
-                <Text style={styles.inputHint}>Example: 123.45.67.89 or myserver.com</Text>
+                <Text style={styles.inputHint}>Example: https://myserver.com or https://123.45.67.89:3443</Text>
               </>
             )}
             
             <Text style={styles.serverHint}>
               {serverType === 'local'
                 ? '📡 Using local network (http://<your-computer-ip>:3000)'
-                : '🌐 Using custom host on port 3000'}
+                : '🌐 Using remote URL (HTTPS recommended)'}
             </Text>
           </View>
           
@@ -1079,7 +1086,7 @@ export default function App() {
               onPress={async () => {
                 await SecureStore.setItemAsync('server_type', serverType);
                 if (serverType === 'remote') {
-                  await SecureStore.setItemAsync('remote_ip', remoteIp);
+                  await SecureStore.setItemAsync('remote_url', remoteIp);
                 }
                 Alert.alert('Saved', 'Server settings updated');
                 setView('home');
