@@ -5,15 +5,26 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
+const https = require('https');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const crypto = require('crypto');
 const updater = require('./updater');
 
+require('dotenv').config();
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secure-secret-key-change-this';
+const BCRYPT_ROUNDS = Number.parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
+
+const ENABLE_HTTPS = String(process.env.ENABLE_HTTPS || '').toLowerCase() === 'true';
+const HTTPS_PORT = process.env.HTTPS_PORT || 3443;
+const TLS_KEY_PATH = process.env.TLS_KEY_PATH;
+const TLS_CERT_PATH = process.env.TLS_CERT_PATH;
+const FORCE_HTTPS_REDIRECT = String(process.env.FORCE_HTTPS_REDIRECT || '').toLowerCase() === 'true';
 // Use home directory for universal path across any user/OS
 const os = require('os');
 const HOME_DIR = os.homedir();
@@ -24,6 +35,42 @@ app.use(helmet()); // Sets various HTTP headers for security
 app.use(cors());
 app.use(morgan('common')); // Logging
 app.use(express.json());
+
+// Basic brute-force protection for auth endpoints (in-memory)
+const createRateLimiter = ({ windowMs, max }) => {
+    const hits = new Map();
+    const windowMsNum = Number(windowMs);
+    const maxNum = Number(max);
+
+    return (req, res, next) => {
+        const now = Date.now();
+        const key = `${req.ip}:${req.path}`;
+        const entry = hits.get(key) || { count: 0, resetAt: now + windowMsNum };
+
+        if (now > entry.resetAt) {
+            entry.count = 0;
+            entry.resetAt = now + windowMsNum;
+        }
+
+        entry.count += 1;
+        hits.set(key, entry);
+
+        const remaining = Math.max(0, maxNum - entry.count);
+        res.setHeader('X-RateLimit-Limit', String(maxNum));
+        res.setHeader('X-RateLimit-Remaining', String(remaining));
+        res.setHeader('X-RateLimit-Reset', String(Math.floor(entry.resetAt / 1000)));
+
+        if (entry.count > maxNum) {
+            return res.status(429).json({ error: 'Too many attempts. Please try again later.' });
+        }
+
+        next();
+    };
+};
+
+const AUTH_RATE_LIMIT_WINDOW_MS = Number.parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS || String(15 * 60 * 1000), 10);
+const AUTH_RATE_LIMIT_MAX = Number.parseInt(process.env.AUTH_RATE_LIMIT_MAX || '25', 10);
+const authRateLimiter = createRateLimiter({ windowMs: AUTH_RATE_LIMIT_WINDOW_MS, max: AUTH_RATE_LIMIT_MAX });
 
 // Ensure PhotoSync directory exists
 const PHOTOSYNC_DIR = path.join(HOME_DIR, 'PhotoSync', 'server');
@@ -153,12 +200,12 @@ app.get('/', (req, res) => {
 });
 
 // Register User
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', authRateLimiter, async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
     try {
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
         db.run(`INSERT INTO users (email, password) VALUES (?, ?)`, [email, hashedPassword], function(err) {
             if (err) {
                 if (err.message.includes('UNIQUE constraint failed')) return res.status(409).json({ error: 'Email already exists' });
@@ -172,7 +219,7 @@ app.post('/api/register', async (req, res) => {
 });
 
 // Login & Bind Device
-app.post('/api/login', (req, res) => {
+app.post('/api/login', authRateLimiter, (req, res) => {
     const { email, password, device_uuid, device_name } = req.body;
     if (!email || !password || !device_uuid) return res.status(400).json({ error: 'Missing credentials or device ID' });
 
@@ -303,16 +350,66 @@ app.get('/api/files/:filename', authenticateToken, (req, res) => {
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n🚀 Secure Backup Server running on 0.0.0.0:${PORT}`);
-    console.log(`📁 Upload directory: ${UPLOAD_DIR}`);
-    console.log(`💾 Database: ${DB_PATH}\n`);
-    
-    // Start auto-update checker
+const startUpdateChecker = () => {
     updater.startAutoCheck((result) => {
         if (result.available) {
             console.log(`\n✨ Update available: v${result.version}`);
             console.log(`Run 'npm run update' to install\n`);
         }
     });
-});
+};
+
+const startHttp = () => {
+    const httpServer = http.createServer(app);
+    httpServer.listen(PORT, '0.0.0.0', () => {
+        console.log(`\n🚀 Secure Backup Server running on 0.0.0.0:${PORT}`);
+        console.log(`📁 Upload directory: ${UPLOAD_DIR}`);
+        console.log(`💾 Database: ${DB_PATH}\n`);
+        startUpdateChecker();
+    });
+};
+
+const startHttps = () => {
+    if (!TLS_KEY_PATH || !TLS_CERT_PATH) {
+        console.error('HTTPS enabled but TLS_KEY_PATH or TLS_CERT_PATH is missing. Falling back to HTTP.');
+        return startHttp();
+    }
+    if (!fs.existsSync(TLS_KEY_PATH) || !fs.existsSync(TLS_CERT_PATH)) {
+        console.error('HTTPS enabled but TLS key/cert files not found. Falling back to HTTP.');
+        return startHttp();
+    }
+
+    if (JWT_SECRET === 'super-secure-secret-key-change-this') {
+        console.warn('⚠️  JWT_SECRET is using the default value. Set a strong JWT_SECRET for remote deployments.');
+    }
+
+    const tlsOptions = {
+        key: fs.readFileSync(TLS_KEY_PATH),
+        cert: fs.readFileSync(TLS_CERT_PATH)
+    };
+
+    const httpsServer = https.createServer(tlsOptions, app);
+    httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
+        console.log(`\n🔐 HTTPS enabled on 0.0.0.0:${HTTPS_PORT}`);
+        console.log(`📁 Upload directory: ${UPLOAD_DIR}`);
+        console.log(`💾 Database: ${DB_PATH}\n`);
+        startUpdateChecker();
+    });
+
+    if (FORCE_HTTPS_REDIRECT) {
+        const redirectApp = express();
+        redirectApp.use((req, res) => {
+            const hostHeader = req.headers.host || '';
+            const host = hostHeader.includes(':') ? hostHeader.split(':')[0] : hostHeader;
+            const portPart = String(HTTPS_PORT) === '443' ? '' : `:${HTTPS_PORT}`;
+            const location = `https://${host}${portPart}${req.originalUrl}`;
+            res.redirect(301, location);
+        });
+        http.createServer(redirectApp).listen(PORT, '0.0.0.0', () => {
+            console.log(`↪️  HTTP redirect enabled on 0.0.0.0:${PORT} -> HTTPS`);
+        });
+    }
+};
+
+if (ENABLE_HTTPS) startHttps();
+else startHttp();
