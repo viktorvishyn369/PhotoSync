@@ -19,19 +19,21 @@ Then follow the section for your platform. **Install the prerequisites via the l
 #### Desktop (macOS / Linux) - With GUI Tray
 
 **Install these first:**
-- [Node.js LTS (macOS / Linux installers)](https://nodejs.org/en/download)
+- [Node.js v18.20.8 for macOS Intel](https://nodejs.org/dist/v18.20.8/node-v18.20.8.pkg)
+- [Node.js v18.20.8 for macOS Apple Silicon](https://nodejs.org/dist/v18.20.8/node-v18.20.8.pkg) *(Apple Silicon users run via Rosetta if prompted)*
+- [Node.js v18.20.8 for Linux desktop (x64 tarball)](https://nodejs.org/dist/v18.20.8/node-v18.20.8-linux-x64.tar.xz)
 - [Git](https://git-scm.com/downloads)
 - **macOS only:** [Homebrew package manager](https://brew.sh/)
 
-**After the installers finish, return to Terminal and run:**
+After the installers finish, return to Terminal and run:
 ```bash
 sudo curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.sh | bash
 ```
 
-#### Windows Desktop (PowerShell, x64 + ARM64)
+#### Windows Desktop (PowerShell, x64 only)
 
 **Install these first (open in browser, install, then come back):**
-- [Node.js LTS for Windows](https://nodejs.org/en/download/prebuilt-installer)
+- [Node.js v18.20.8 for Windows x64](https://nodejs.org/dist/v18.20.8/node-v18.20.8-x64.msi) — works on Windows 10 (initial release) and newer. (No Windows ARM build available.)
 - [Git for Windows](https://gitforwindows.org/)
 
 Then open **PowerShell as Administrator** and run:
@@ -42,7 +44,7 @@ Then open **PowerShell as Administrator** and run:
 #### Linux Server (Headless, no GUI)
 
 **Install prerequisites first (if your distro doesn’t have them):**
-- [Node.js LTS (tarball / instructions)](https://nodejs.org/en/download)
+- [Node.js v18.20.8 for Linux desktop (x64 tarball)](https://nodejs.org/dist/v18.20.8/node-v18.20.8-linux-x64.tar.xz)
 - [Git for Linux](https://git-scm.com/download/linux)
 
 Then run on the server:

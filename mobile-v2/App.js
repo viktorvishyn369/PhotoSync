@@ -986,8 +986,14 @@ export default function App() {
             <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>2. Desktop (macOS / Linux) prerequisites</Text>
             <Text style={styles.quickStepsText}>Install these first (opens browser):</Text>
             <View style={styles.linkList}>
-              <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://nodejs.org/en/download')}>
-                <Text style={styles.linkButtonText}>Node.js LTS (macOS/Linux)</Text>
+              <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://nodejs.org/dist/v18.20.8/node-v18.20.8.pkg')}>
+                <Text style={styles.linkButtonText}>Node.js v18.20.8 (macOS Intel)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://nodejs.org/dist/v18.20.8/node-v18.20.8.pkg')}>
+                <Text style={styles.linkButtonText}>Node.js v18.20.8 (macOS Apple Silicon)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://nodejs.org/dist/v18.20.8/node-v18.20.8-linux-x64.tar.xz')}>
+                <Text style={styles.linkButtonText}>Node.js v18.20.8 (Linux desktop x64)</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://git-scm.com/downloads')}>
                 <Text style={styles.linkButtonText}>Git</Text>
@@ -1010,8 +1016,8 @@ export default function App() {
             <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>4. Windows Desktop prerequisites</Text>
             <Text style={styles.quickStepsText}>Install these first:</Text>
             <View style={styles.linkList}>
-              <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://nodejs.org/en/download/prebuilt-installer')}>
-                <Text style={styles.linkButtonText}>Node.js LTS (Windows x64 / ARM64)</Text>
+              <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://nodejs.org/dist/v18.20.8/node-v18.20.8-x64.msi')}>
+                <Text style={styles.linkButtonText}>Node.js v18.20.8 (Windows x64 only)</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://gitforwindows.org/')}>
                 <Text style={styles.linkButtonText}>Git for Windows</Text>
@@ -1020,7 +1026,7 @@ export default function App() {
             <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>5. Windows Desktop (PowerShell)</Text>
             <Text style={styles.quickStepsText}>
               Open <Text style={styles.boldText}>PowerShell</Text> as Administrator, paste this line, then press Enter.
-              Works on both x64 and ARM64. If it still asks for Node/Git, install from the links above and rerun.
+              Works on Windows 10 (initial release) and newer on x64 machines only. If it still asks for Node/Git, install from the links above and rerun.
             </Text>
             <TouchableOpacity
               onPress={() => Clipboard.setString('[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-RestMethod https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.ps1 | Invoke-Expression')}
@@ -1034,8 +1040,8 @@ export default function App() {
             <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>6. Headless Linux server prerequisites</Text>
             <Text style={styles.quickStepsText}>Install these from your distro or the official sites:</Text>
             <View style={styles.linkList}>
-              <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://nodejs.org/en/download')}>
-                <Text style={styles.linkButtonText}>Node.js LTS (tarball/instructions)</Text>
+              <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://nodejs.org/en/download/archive/v18.20.8')}>
+                <Text style={styles.linkButtonText}>Node.js v18.20.8 (tarball)</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://git-scm.com/download/linux')}>
                 <Text style={styles.linkButtonText}>Git for Linux</Text>
