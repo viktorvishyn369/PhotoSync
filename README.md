@@ -14,24 +14,38 @@ Secure, private photo backup system. Your photos, your server, your control.
 - **Windows:** Press `Win + R`, type "powershell", press Enter
 - **Linux:** Press `Ctrl + Alt + T`
 
-**Then, copy & paste one of these commands:**
+Then follow the section for your platform. **Install the prerequisites via the links first** (opens in browser), then run the script so it can finish in one pass.
 
-#### Desktop (macOS, Windows, Linux) - With GUI Tray
+#### Desktop (macOS / Linux) - With GUI Tray
+
+**Install these first:**
+- [Node.js LTS (macOS / Linux installers)](https://nodejs.org/en/download)
+- [Git](https://git-scm.com/downloads)
+- **macOS only:** [Homebrew package manager](https://brew.sh/)
+
+**After the installers finish, return to Terminal and run:**
 ```bash
-# macOS / Linux (run with sudo so Node.js and dependencies can be installed)
 sudo curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.sh | bash
+```
 
-# Windows (PowerShell, Windows 10 compatible, x64 and ARM64)
-# Requirements: PowerShell, Internet access. The installer will try winget first.
-# If winget is missing, it will try to install Chocolatey (when run as Administrator) and then Node.js via choco.
-# On both x64 and ARM64, winget/choco pick the correct Node.js build automatically.
-# If everything fails, the installer opens the matching Node.js v24.11.1 MSI (x64 or ARM64) in your default browser and asks you to install it, then rerun.
+#### Windows Desktop (PowerShell, x64 + ARM64)
+
+**Install these first (open in browser, install, then come back):**
+- [Node.js LTS for Windows](https://nodejs.org/en/download/prebuilt-installer)
+- [Git for Windows](https://gitforwindows.org/)
+
+Then open **PowerShell as Administrator** and run:
+```powershell
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-RestMethod https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.ps1 | Invoke-Expression
 ```
 
-**Tip:** Right-click in Terminal/PowerShell to paste, then press Enter!
+#### Linux Server (Headless, no GUI)
 
-#### Linux Server (Headless) - No GUI
+**Install prerequisites first (if your distro doesn’t have them):**
+- [Node.js LTS (tarball / instructions)](https://nodejs.org/en/download)
+- [Git for Linux](https://git-scm.com/download/linux)
+
+Then run on the server:
 ```bash
 sudo curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install-server.sh | bash
 ```

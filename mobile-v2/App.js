@@ -37,6 +37,15 @@ export default function App() {
     checkLogin();
   }, []);
 
+  const openLink = async (url) => {
+    try {
+      await Linking.openURL(url);
+    } catch (error) {
+      console.error('Link open error', error);
+      Alert.alert('Error', 'Could not open link');
+    }
+  };
+
   const getDeviceUUID = async (userEmail = null, userPassword = null) => {
     // Get hardware device ID (IMEI equivalent)
     let hardwareId = '';
@@ -974,10 +983,21 @@ export default function App() {
               • Linux: Ctrl + Alt + T
             </Text>
 
-            <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>2. Desktop (macOS / Linux) with Tray</Text>
-            <Text style={styles.quickStepsText}>
-              Paste this into Terminal on your computer, then press Enter (use sudo so Node.js can be installed):
-            </Text>
+            <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>2. Desktop (macOS / Linux) prerequisites</Text>
+            <Text style={styles.quickStepsText}>Install these first (opens browser):</Text>
+            <View style={styles.linkList}>
+              <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://nodejs.org/en/download')}>
+                <Text style={styles.linkButtonText}>Node.js LTS (macOS/Linux)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://git-scm.com/downloads')}>
+                <Text style={styles.linkButtonText}>Git</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://brew.sh/')}>
+                <Text style={styles.linkButtonText}>Homebrew (macOS only)</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>3. Desktop (macOS / Linux) installer</Text>
+            <Text style={styles.quickStepsText}>After prerequisites finish installing, run this with sudo:</Text>
             <TouchableOpacity
               onPress={() => Clipboard.setString('sudo curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.sh | bash')}
               style={{ marginTop: 4 }}>
@@ -987,11 +1007,20 @@ export default function App() {
               <Text style={styles.codeHint}>Tap to copy</Text>
             </TouchableOpacity>
 
-            <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>3. Windows Desktop (PowerShell)</Text>
+            <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>4. Windows Desktop prerequisites</Text>
+            <Text style={styles.quickStepsText}>Install these first:</Text>
+            <View style={styles.linkList}>
+              <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://nodejs.org/en/download/prebuilt-installer')}>
+                <Text style={styles.linkButtonText}>Node.js LTS (Windows x64 / ARM64)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://gitforwindows.org/')}>
+                <Text style={styles.linkButtonText}>Git for Windows</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>5. Windows Desktop (PowerShell)</Text>
             <Text style={styles.quickStepsText}>
-              Open <Text style={styles.boldText}>PowerShell</Text> (not Command Prompt), paste this line, then press Enter.
-              It works on both x64 and ARM64 Windows d the installer will pick the right Node.js build.
-              If it still says Node.js is missing and cannot be installed automatically, it will open the correct Node.js v24.11.1 installer for your architecture in the browser; install it and run this command again.
+              Open <Text style={styles.boldText}>PowerShell</Text> as Administrator, paste this line, then press Enter.
+              Works on both x64 and ARM64. If it still asks for Node/Git, install from the links above and rerun.
             </Text>
             <TouchableOpacity
               onPress={() => Clipboard.setString('[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-RestMethod https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install.ps1 | Invoke-Expression')}
@@ -1002,7 +1031,17 @@ export default function App() {
               <Text style={styles.codeHint}>Tap to copy</Text>
             </TouchableOpacity>
 
-            <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>4. Headless Linux Server (no GUI)</Text>
+            <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>6. Headless Linux server prerequisites</Text>
+            <Text style={styles.quickStepsText}>Install these from your distro or the official sites:</Text>
+            <View style={styles.linkList}>
+              <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://nodejs.org/en/download')}>
+                <Text style={styles.linkButtonText}>Node.js LTS (tarball/instructions)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.linkButton} onPress={() => openLink('https://git-scm.com/download/linux')}>
+                <Text style={styles.linkButtonText}>Git for Linux</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.quickStepsTitle, { marginTop: 12 }]}>7. Headless Linux Server (no GUI)</Text>
             <Text style={styles.quickStepsText}>
               Paste this into your Linux server shell, then press Enter (use sudo so the service can be installed):
             </Text>
