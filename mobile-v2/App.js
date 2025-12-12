@@ -50,8 +50,17 @@ export default function App() {
     // NOTE:
     // - We cannot access true IMEI in Expo/React Native.
     // - On iOS we use idForVendor; on Android we use androidId.
-    // - To stay consistent across reinstalls, UUID must be derived, not stored in app storage.
+    // - iOS idForVendor can change after uninstall (if it's the only app from that vendor).
+    //   To stay stable across reinstall, we also persist the UUID in SecureStore (Keychain on iOS).
     if (!userEmail) return null;
+
+    const persistedKey = `device_uuid_v2:${userEmail.toLowerCase()}`;
+    try {
+      const persisted = await SecureStore.getItemAsync(persistedKey);
+      if (persisted) return persisted;
+    } catch (e) {
+      // ignore
+    }
 
     let hardwareId = '';
     try {
@@ -71,7 +80,13 @@ export default function App() {
     }
 
     const namespace = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
-    return uuidv5(`${userEmail}:${hardwareId}`, namespace);
+    const uuid = uuidv5(`${userEmail.toLowerCase()}:${hardwareId}`, namespace);
+    try {
+      await SecureStore.setItemAsync(persistedKey, uuid);
+    } catch (e) {
+      // ignore
+    }
+    return uuid;
   };
 
   const getServerUrl = () => {
