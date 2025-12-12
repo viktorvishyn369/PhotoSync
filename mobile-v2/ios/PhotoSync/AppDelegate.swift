@@ -10,7 +10,7 @@ public class AppDelegate: ExpoAppDelegate {
   var reactNativeFactory: RCTReactNativeFactory?
 
 #if DEBUG
-  private var didAutoReloadAfterBecomeActive = false
+  private var didStartReactNativeAfterBecomeActive = false
   private var didBecomeActiveObserver: NSObjectProtocol?
   private var cachedLaunchOptions: [UIApplication.LaunchOptionsKey: Any]?
 #endif
@@ -29,39 +29,35 @@ public class AppDelegate: ExpoAppDelegate {
 
 #if os(iOS) || os(tvOS)
     window = UIWindow(frame: UIScreen.main.bounds)
+
+#if DEBUG
+    // In DEBUG/dev builds, iOS may show the Local Network permission prompt on first launch.
+    // If RN starts before the prompt completes, Metro bundle URL resolution can fail and show
+    // a red screen: "No script URL provided". Delay starting RN until the app becomes active.
+#else
     factory.startReactNative(
       withModuleName: "main",
       in: window,
       launchOptions: launchOptions)
 #endif
+#endif
 
 #if DEBUG
     cachedLaunchOptions = launchOptions
 
-    // Workaround: On first launch, iOS may show the Local Network permission prompt before
-    // the dev bundle URL is available, leading to a red screen: "No script URL provided".
-    // When the app becomes active after the prompt, trigger a single RN reload so Metro
-    // reconnects automatically (no need to tap "Reload JS").
+    // Start RN once after the app becomes active (after any system permission prompts).
     didBecomeActiveObserver = NotificationCenter.default.addObserver(
       forName: UIApplication.didBecomeActiveNotification,
       object: nil,
       queue: .main
     ) { [weak self] _ in
       guard let self = self else { return }
-      if self.didAutoReloadAfterBecomeActive { return }
-      self.didAutoReloadAfterBecomeActive = true
+      if self.didStartReactNativeAfterBecomeActive { return }
+      self.didStartReactNativeAfterBecomeActive = true
 
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
         guard let window = self.window else { return }
-        // Fully recreate the RN factory/delegate so bundle URL resolution happens again.
-        let delegate = ReactNativeDelegate()
-        let factory = ExpoReactNativeFactory(delegate: delegate)
-        delegate.dependencyProvider = RCTAppDependencyProvider()
-
-        self.reactNativeDelegate = delegate
-        self.reactNativeFactory = factory
-        self.bindReactNativeFactory(factory)
-
+        guard let factory = self.reactNativeFactory else { return }
         factory.startReactNative(
           withModuleName: "main",
           in: window,

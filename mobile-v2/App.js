@@ -288,15 +288,31 @@ export default function App() {
         return;
       }
 
+      // iOS can grant "limited" access which may return 0 assets here.
+      if (
+        Platform.OS === 'ios' &&
+        permission &&
+        typeof permission.accessPrivileges === 'string' &&
+        permission.accessPrivileges !== 'all'
+      ) {
+        setStatus('Limited photo access. Please allow full access to scan for duplicates.');
+        Alert.alert(
+          'Limited Photos Access',
+          'Clean Duplicates needs Full Access to your Photos library to scan for duplicates.\n\nGo to Settings → PhotoSync → Photos → Full Access.'
+        );
+        setLoading(false);
+        return;
+      }
+
       let allAssets = null;
-      for (let attempt = 0; attempt < 5; attempt++) {
+      for (let attempt = 0; attempt < 12; attempt++) {
         allAssets = await MediaLibrary.getAssetsAsync({
           first: 10000,
           mediaType: ['photo', 'video'],
         });
 
         if (allAssets && allAssets.assets && allAssets.assets.length > 0) break;
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
       if (!allAssets.assets || allAssets.assets.length === 0) {
