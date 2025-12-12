@@ -1240,7 +1240,7 @@ export default function App() {
               <Text style={styles.cardIconText}> </Text>
             </View>
             <Text style={styles.cardTitle}>Clean Duplicates</Text>
-            <Text style={styles.cardDescription}>Find and remove duplicate photos/videos on this device</Text>
+            <Text style={styles.cardDescription}>Remove duplicate photos/videos on this device</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
