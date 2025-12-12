@@ -1031,6 +1031,11 @@ export default function App() {
                 : '🌐 Using remote server (https://<domain-or-ip>:3000)'}
             </Text>
 
+            <View style={styles.serverInfo}>
+              <Text style={styles.serverInfoLabel}>Connected to:</Text>
+              <Text style={styles.serverInfoText}>{getServerUrl()}</Text>
+            </View>
+
             <TouchableOpacity
               style={[styles.btnSecondary, { marginTop: 10 }]}
               onPress={() => {
