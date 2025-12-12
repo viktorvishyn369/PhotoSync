@@ -47,6 +47,21 @@ export default function App() {
     }
   };
 
+  const resetServerSettings = async () => {
+    try {
+      await SecureStore.deleteItemAsync('server_type');
+      await SecureStore.deleteItemAsync('local_host');
+      await SecureStore.deleteItemAsync('remote_host');
+      await SecureStore.deleteItemAsync('remote_url');
+      await SecureStore.deleteItemAsync('remote_ip');
+    } catch (e) {
+      // ignore
+    }
+    setServerType('local');
+    setLocalHost('');
+    setRemoteHost('');
+  };
+
   const getDeviceUUID = async (userEmail = null, userPassword = null) => {
     // UUID policy (per your request):
     // - Must be stable across reinstalls
@@ -1015,6 +1030,21 @@ export default function App() {
                 ? '📡 Using local network (http://<your-computer-ip>:3000)'
                 : '🌐 Using remote server (https://<domain-or-ip>)'}
             </Text>
+
+            <TouchableOpacity
+              style={[styles.btnSecondary, { marginTop: 10 }]}
+              onPress={() => {
+                Alert.alert(
+                  'Reset server settings?',
+                  'This will clear the saved server type and address on this device.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Reset', style: 'destructive', onPress: resetServerSettings }
+                  ]
+                );
+              }}>
+              <Text style={styles.btnTextSec}>Reset Server Settings</Text>
+            </TouchableOpacity>
           </View>
           
           <TextInput 
