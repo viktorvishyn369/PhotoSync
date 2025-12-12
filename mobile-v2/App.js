@@ -269,7 +269,7 @@ export default function App() {
 
       if (!blobModulePresent) {
         setStatus('Duplicate scan requires a development build (not Expo Go).');
-        Alert.alert('Development Build Required', 'Clean Duplicates uses native file hashing for reliability. Please install a development build (expo run:ios/android) and try again.');
+        Alert.alert('Development Build Required', 'Clean Duplicates uses native file analysis for reliability. Please install a development build (expo run:ios/android) and try again.');
         setLoading(false);
         return;
       }
@@ -284,7 +284,7 @@ export default function App() {
 
       if (!ReactNativeBlobUtil || !ReactNativeBlobUtil.fs || typeof ReactNativeBlobUtil.fs.hash !== 'function') {
         setStatus('Duplicate scan requires a development build (not Expo Go).');
-        Alert.alert('Development Build Required', 'Clean Duplicates uses native file hashing for reliability. Please install a development build (expo run:ios/android) and try again.');
+        Alert.alert('Development Build Required', 'Clean Duplicates uses native file analysis for reliability. Please install a development build (expo run:ios/android) and try again.');
         setLoading(false);
         return;
       }
@@ -341,7 +341,7 @@ export default function App() {
         return uri;
       };
 
-      // Hash-only duplicate detection: hash every readable asset.
+      // Analysis-only duplicate detection: analyze every readable asset.
       // No filename/date/size/metadata filtering is used for duplicate grouping.
       const hashGroups = {};
       let hashedCount = 0;
@@ -423,7 +423,7 @@ export default function App() {
 
           hashedCount++;
           if (hashedCount % 10 === 0) {
-            setStatus(`Hashing files... ${hashedCount} hashed`);
+            setStatus(`Analyzing files... ${hashedCount} analyzed`);
           }
 
           const key = hashHex;
@@ -433,19 +433,16 @@ export default function App() {
           hashSkipped++;
           hashFailed++;
           if (sampleSkipped.length < 5) {
-            sampleSkipped.push({ filename: info && info.filename ? info.filename : asset.filename, reason: 'hash failed', uri: String(rawUri) });
+            sampleSkipped.push({ filename: info && info.filename ? info.filename : asset.filename, reason: 'analysis failed', uri: String(rawUri) });
           }
           continue;
         }
       }
-
-      const duplicateGroups = Object.values(hashGroups).filter(group => group.length > 1);
-
       if (duplicateGroups.length === 0) {
         const noteParts = [];
-        noteParts.push(`Hashed ${hashedCount} item${hashedCount !== 1 ? 's' : ''}.`);
+        noteParts.push(`Analyzed ${hashedCount} file${hashedCount !== 1 ? 's' : ''}.`);
         if (hashSkipped > 0) noteParts.push(`Skipped: ${hashSkipped}`);
-        if (hashFailed > 0) noteParts.push(`Hash failures: ${hashFailed}`);
+        if (hashFailed > 0) noteParts.push(`Analysis failures: ${hashFailed}`);
         if (inspectFailed > 0) noteParts.push(`Asset-info failures: ${inspectFailed}`);
         if (sampleSkipped.length > 0) {
           noteParts.push('Examples (max 3):');
@@ -454,7 +451,7 @@ export default function App() {
           });
         }
         const note = noteParts.length > 0 ? `\n\n${noteParts.join('\n')}` : '';
-        setStatus('No exact duplicate photos or videos found on this device.');
+        setStatus('No duplicates');
         Alert.alert('No Duplicates', 'No exact duplicate photos or videos were found.' + note);
         setLoading(false);
         return;
@@ -467,9 +464,9 @@ export default function App() {
       });
 
       const skippedParts = [];
-      skippedParts.push(`Hashed ${hashedCount} item${hashedCount !== 1 ? 's' : ''}.`);
+      skippedParts.push(`Analyzed ${hashedCount} file${hashedCount !== 1 ? 's' : ''}.`);
       if (hashSkipped > 0) skippedParts.push(`Skipped: ${hashSkipped}`);
-      if (hashFailed > 0) skippedParts.push(`Hash failures: ${hashFailed}`);
+      if (hashFailed > 0) skippedParts.push(`Analysis failures: ${hashFailed}`);
       if (inspectFailed > 0) skippedParts.push(`Asset-info failures: ${inspectFailed}`);
       const skippedNote = skippedParts.length > 0 ? `\n\n${skippedParts.join('\n')}` : '';
       const summaryMessage = `Found ${duplicateCount} duplicate photo/video item${duplicateCount !== 1 ? 's' : ''} in ${duplicateGroups.length} group${duplicateGroups.length !== 1 ? 's' : ''} on this device.\n\nWe will keep the oldest item in each group and delete the newer duplicates.` + skippedNote;
@@ -501,7 +498,7 @@ export default function App() {
                   });
 
                   if (idsToDelete.length === 0) {
-                    setStatus('No duplicates selected for deletion.');
+                    setStatus('Nothing to delete');
                     setLoading(false);
                     return;
                   }
@@ -510,7 +507,7 @@ export default function App() {
                   const recoveryNote = Platform.OS === 'ios'
                     ? 'Deleted items were moved to "Recently Deleted" in Photos.'
                     : 'Deleted items were removed from this device.';
-                  setStatus(`Deleted ${idsToDelete.length} duplicate item${idsToDelete.length !== 1 ? 's' : ''}.`);
+                  setStatus('Cleanup complete');
                   Alert.alert(
                     'Duplicates Cleaned',
                     `Deleted ${idsToDelete.length} duplicate item${idsToDelete.length !== 1 ? 's' : ''}.\n\n${recoveryNote}`
@@ -756,10 +753,10 @@ export default function App() {
       console.log('===== END BACKUP TRACE =====\n');
       
       if (failedCount === 0) {
-        setStatus(`Backup Complete! Uploaded ${successCount} file${successCount !== 1 ? 's' : ''}.`);
+        setStatus('Backup complete');
         Alert.alert('Success', `Successfully backed up ${successCount} file${successCount !== 1 ? 's' : ''}.`);
       } else {
-        setStatus(`Backup Complete: ${successCount} succeeded, ${failedCount} failed.`);
+        setStatus('Backup partial');
         Alert.alert('Partial Success', `Uploaded ${successCount} file${successCount !== 1 ? 's' : ''}.\n${failedCount} file${failedCount !== 1 ? 's' : ''} failed.`);
       }
       setProgress(0); // Reset progress after completion
@@ -972,7 +969,7 @@ export default function App() {
       console.log(`Failed downloads: ${toDownload.length - successCount}`);
       console.log('===== END RESTORE TRACE =====\n');
       
-      setStatus(`Restore Complete! ${successCount}/${toDownload.length} files downloaded.`);
+      setStatus('Sync complete');
       setProgress(0); // Reset progress after completion
       
       if (successCount > 0) {
