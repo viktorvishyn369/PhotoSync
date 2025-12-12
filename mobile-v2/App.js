@@ -1489,6 +1489,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     lineHeight: 20,
+    height: 40,
   },
   progressBar: {
     height: 4,
