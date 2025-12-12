@@ -752,10 +752,22 @@ export default function App() {
     setStatus('Requesting permissions...');
     setLoading(true);
     
-    // Request permission to save to gallery ONCE at the start
-    const permission = await MediaLibrary.requestPermissionsAsync(true); // true = write access
+    // Request full media library permission (read is required to check what already exists locally,
+    // and write is required to save restored items)
+    const permission = await MediaLibrary.requestPermissionsAsync();
     if (permission.status !== 'granted') {
-      Alert.alert('Permission Required', 'Media library permission is required to save photos to your gallery.');
+      Alert.alert('Permission Required', 'Media library permission is required to sync photos to your gallery.');
+      setLoading(false);
+      return;
+    }
+
+    // iOS: if user selected "Limited" photo access, we cannot reliably compare filenames or sync.
+    if (Platform.OS === 'ios' && permission.accessPrivileges && permission.accessPrivileges !== 'all') {
+      setStatus('Limited photo access. Please allow full access to sync from cloud.');
+      Alert.alert(
+        'Limited Photos Access',
+        'Sync from Cloud needs Full Access to your Photos library to check what already exists and save new items.\n\nGo to Settings → PhotoSync → Photos → Full Access.'
+      );
       setLoading(false);
       return;
     }
