@@ -152,15 +152,13 @@ echo -e "${GREEN}✓${NC} Downloaded to $INSTALL_DIR"
 echo ""
 echo -e "${BLUE}[4/7]${NC} Installing server dependencies..."
 cd server
-rm -f package-lock.json
-npm install --production
+npm install --omit=dev
 echo -e "${GREEN}✓${NC} Server dependencies installed"
 
 # Install tray dependencies
 echo ""
 echo -e "${BLUE}[5/7]${NC} Installing tray app dependencies..."
 cd ../server-tray
-rm -f package-lock.json
 npm install
 echo -e "${GREEN}✓${NC} Tray app dependencies installed"
 
@@ -180,7 +178,6 @@ fi
 echo ""
 echo -e "${BLUE}[7/7]${NC} Preparing mobile app and starting Expo dev server..."
 cd ../mobile-v2
-rm -f package-lock.json
 npm install
 echo -e "${GREEN}✓${NC} Mobile app dependencies installed"
 
@@ -195,5 +192,18 @@ echo "Keep this terminal open and connect from your phone using Expo (QR code)."
 echo ""
 
 # Start Expo dev server (foreground so user can see QR code)
-npx expo start
+PORT=8081
+if command -v lsof &> /dev/null; then
+    if lsof -tiTCP:$PORT -sTCP:LISTEN &> /dev/null; then
+        PORT=8082
+    fi
+else
+    if command -v nc &> /dev/null; then
+        if nc -z 127.0.0.1 $PORT &> /dev/null; then
+            PORT=8082
+        fi
+    fi
+fi
 
+echo -e "${BLUE}→${NC} Starting Expo on port $PORT (LAN mode)"
+npx expo start --clear --lan --port $PORT
