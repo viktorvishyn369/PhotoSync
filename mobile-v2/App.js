@@ -1187,6 +1187,7 @@ const styles = StyleSheet.create({
     padding: 18,
     borderRadius: 12,
     alignItems: 'center',
+    width: '100%',
     marginTop: 10,
   },
   btnSecondary: {
@@ -1547,14 +1548,14 @@ const styles = StyleSheet.create({
   },
   setupGuideBtn: {
     backgroundColor: THEME.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
+    padding: 18,
+    borderRadius: 12,
     alignItems: 'center',
+    width: '100%',
     marginBottom: 12,
   },
   setupGuideBtnText: {
-    color: '#FFFFFF',
+    color: '#000000',
     fontSize: 15,
     fontWeight: '600',
   },
