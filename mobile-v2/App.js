@@ -107,7 +107,12 @@ export default function App() {
       : '';
     const tmpUri = `${FileSystem.cacheDirectory}sc_src_${assetId}${ext}`;
     await FileSystem.deleteAsync(tmpUri, { idempotent: true });
-    await FileSystem.copyAsync({ from: localUri, to: tmpUri });
+    if (typeof FileSystem.copyAsync === 'function') {
+      await FileSystem.copyAsync({ from: localUri, to: tmpUri });
+    } else {
+      const data = await FileSystem.readAsStringAsync(localUri, { encoding: FileSystem.EncodingType.Base64 });
+      await FileSystem.writeAsStringAsync(tmpUri, data, { encoding: FileSystem.EncodingType.Base64 });
+    }
     const p = normalizeFilePath(tmpUri);
     if (!p) throw new Error('Failed to stage asset');
     return { filePath: p, tmpCopied: true, tmpUri };
