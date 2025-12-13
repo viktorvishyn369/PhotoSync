@@ -143,7 +143,32 @@ export default function App() {
     const b64 = naclUtil.encodeBase64(encryptedBytes);
     await FileSystem.writeAsStringAsync(tmpUri, b64, { encoding: FileSystem.EncodingType.Base64 });
 
-    console.log('StealthCloud chunk upload:', chunkId);
+    const url = `${SERVER_URL}/api/cloud/chunks`;
+
+    // IMPORTANT: do not send Content-Type from auth headers; octet-stream/multipart must set its own value
+    const baseHeaders = sanitizeHeaders({
+      'X-Chunk-Id': chunkId,
+      ...(config && config.headers ? config.headers : {})
+    });
+
+    // iOS: avoid react-native-blob-util networking (it can crash with nil values in NSDictionary)
+    if (Platform.OS === 'ios' && FileSystem && typeof FileSystem.uploadAsync === 'function') {
+      const headers = {
+        ...stripContentType(baseHeaders),
+        'Content-Type': 'application/octet-stream'
+      };
+      const res = await FileSystem.uploadAsync(url, tmpUri, {
+        httpMethod: 'POST',
+        uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+        headers
+      });
+      const status = res && typeof res.status === 'number' ? res.status : 0;
+      if (status >= 300) {
+        throw new Error(`Chunk upload failed: HTTP ${status}${res?.body ? ` ${res.body}` : ''}`);
+      }
+      await FileSystem.deleteAsync(tmpUri, { idempotent: true });
+      return;
+    }
 
     // Prefer react-native-blob-util for reliable multipart uploads in RN builds
     let ReactNativeBlobUtil = null;
@@ -154,19 +179,14 @@ export default function App() {
       ReactNativeBlobUtil = null;
     }
 
-    const url = `${SERVER_URL}/api/cloud/chunks`;
-    // IMPORTANT: do not send Content-Type from auth headers; multipart must set its own boundary
-    const baseHeaders = sanitizeHeaders({
-      'X-Chunk-Id': chunkId,
-      ...(config && config.headers ? config.headers : {})
-    });
+    const headers = stripContentType(baseHeaders);
 
     if (ReactNativeBlobUtil && ReactNativeBlobUtil.fetch && ReactNativeBlobUtil.wrap) {
       const filePath = tmpUri.startsWith('file://') ? tmpUri.replace('file://', '') : tmpUri;
       try {
         // Prefer raw octet-stream upload (more reliable than multipart on some RN builds)
         const rawHeaders = {
-          ...stripContentType(baseHeaders),
+          ...headers,
           'Content-Type': 'application/octet-stream'
         };
         const resp = await ReactNativeBlobUtil.fetch('POST', url, rawHeaders, ReactNativeBlobUtil.wrap(filePath));
