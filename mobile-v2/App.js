@@ -734,6 +734,9 @@ export default function App() {
       const SERVER_URL = getServerUrl();
       const masterKey = await getStealthCloudMasterKey();
 
+      const localIndex = await buildLocalFilenameSetPaged({ mediaType: ['photo', 'video'] });
+      const localFilenames = localIndex.set;
+
       const listRes = await axios.get(`${SERVER_URL}/api/cloud/manifests`, config);
       const manifests = (listRes.data && listRes.data.manifests) ? listRes.data.manifests : [];
       if (manifests.length === 0) {
