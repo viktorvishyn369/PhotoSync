@@ -385,6 +385,10 @@ app.get('/api/files/:filename', authenticateToken, (req, res) => {
 
 // Upload encrypted chunk blob
 app.post('/api/cloud/chunks', authenticateToken, uploadCloudChunk.single('chunk'), (req, res) => {
+    const clientBuild = (req.headers['x-client-build'] || '').toString();
+    if (clientBuild) {
+        console.log(`[SC] /chunks client=${clientBuild} user=${req.user.id}`);
+    }
     if (!req.file) return res.status(400).json({ error: 'No chunk uploaded' });
 
     const requestedId = (req.headers['x-chunk-id'] || '').toString().toLowerCase();
@@ -438,9 +442,17 @@ app.get('/api/cloud/chunks/:chunkId', authenticateToken, (req, res) => {
 
 // Upload encrypted manifest JSON
 app.post('/api/cloud/manifests', authenticateToken, (req, res) => {
-    const { manifestId, encryptedManifest } = req.body || {};
+    const { manifestId, encryptedManifest, chunkCount } = req.body || {};
+    const clientBuild = (req.headers['x-client-build'] || '').toString();
+    if (clientBuild) {
+        console.log(`[SC] /manifests client=${clientBuild} user=${req.user.id} chunkCount=${typeof chunkCount === 'number' ? chunkCount : 'na'}`);
+    }
     if (!manifestId || typeof manifestId !== 'string') return res.status(400).json({ error: 'manifestId required' });
     if (!encryptedManifest || typeof encryptedManifest !== 'string') return res.status(400).json({ error: 'encryptedManifest required' });
+
+    if (typeof chunkCount === 'number' && chunkCount <= 0) {
+        return res.status(400).json({ error: 'Invalid manifest: chunkCount must be > 0' });
+    }
 
     const safeId = manifestId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 128);
     if (!safeId) return res.status(400).json({ error: 'Invalid manifestId' });

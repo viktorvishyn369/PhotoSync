@@ -13,6 +13,8 @@ import { sha256 } from 'js-sha256';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+const CLIENT_BUILD = `photosync-mobile-v2/${Application.nativeApplicationVersion || '0'}(${Application.nativeBuildVersion || '0'}) sc-debug-2025-12-13`;
+
 const THEME = {
   bg: '#121212',
   card: '#1E1E1E',
@@ -313,7 +315,11 @@ export default function App() {
           manifestBox: naclUtil.encodeBase64(manifestBox)
         });
 
-        await axios.post(`${SERVER_URL}/api/cloud/manifests`, { manifestId, encryptedManifest }, { headers: config.headers, timeout: 30000 });
+        await axios.post(
+          `${SERVER_URL}/api/cloud/manifests`,
+          { manifestId, encryptedManifest, chunkCount: chunkIds.length },
+          { headers: config.headers, timeout: 30000 }
+        );
         uploaded += 1;
       }
 
@@ -956,7 +962,8 @@ export default function App() {
     return {
       headers: {
         'Authorization': `Bearer ${token}`,
-        'X-Device-UUID': uuid
+        'X-Device-UUID': uuid,
+        'X-Client-Build': CLIENT_BUILD
       }
     };
   };
