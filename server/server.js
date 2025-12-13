@@ -103,9 +103,36 @@ db.serialize(() => {
     // Users table
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_uuid TEXT,
         email TEXT UNIQUE,
         password TEXT
     )`);
+
+    // Migrate existing DBs: add user_uuid column if missing, and populate it
+    db.all(`PRAGMA table_info(users)`, [], (err, cols) => {
+        if (err) return;
+        const hasUserUuid = Array.isArray(cols) && cols.some(c => c && c.name === 'user_uuid');
+        if (!hasUserUuid) {
+            db.run(`ALTER TABLE users ADD COLUMN user_uuid TEXT`, [], () => {
+                // continue even if alter fails
+                db.all(`SELECT id FROM users WHERE user_uuid IS NULL OR user_uuid = ''`, [], (e2, rows) => {
+                    if (e2) return;
+                    (rows || []).forEach(r => {
+                        const u = (crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'));
+                        db.run(`UPDATE users SET user_uuid = ? WHERE id = ?`, [u, r.id]);
+                    });
+                });
+            });
+        } else {
+            db.all(`SELECT id FROM users WHERE user_uuid IS NULL OR user_uuid = ''`, [], (e2, rows) => {
+                if (e2) return;
+                (rows || []).forEach(r => {
+                    const u = (crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'));
+                    db.run(`UPDATE users SET user_uuid = ? WHERE id = ?`, [u, r.id]);
+                });
+            });
+        }
+    });
 
     // Devices table - Binding users to specific devices
     db.run(`CREATE TABLE IF NOT EXISTS devices (
@@ -182,6 +209,51 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
+const getStealthCloudUserKey = (user) => {
+    const key = (user && (user.user_uuid || user.userUuid)) ? String(user.user_uuid || user.userUuid) : '';
+    // UUID safe-ish folder: keep only [a-zA-Z0-9_-]
+    const safe = key.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 128);
+    return safe || String(user.id);
+};
+
+const ensureStealthCloudUserDirs = (user) => {
+    const key = getStealthCloudUserKey(user);
+    const userDir = path.join(CLOUD_DIR, 'users', key);
+    const chunksDir = path.join(userDir, 'chunks');
+    const manifestsDir = path.join(userDir, 'manifests');
+    if (!fs.existsSync(chunksDir)) fs.mkdirSync(chunksDir, { recursive: true });
+    if (!fs.existsSync(manifestsDir)) fs.mkdirSync(manifestsDir, { recursive: true });
+
+    // Backward-compat migration: if old numeric folder exists and new doesn't have data, move it once
+    if (user && user.id && String(user.id) !== key) {
+        const oldDir = path.join(CLOUD_DIR, 'users', String(user.id));
+        if (fs.existsSync(oldDir)) {
+            const oldChunks = path.join(oldDir, 'chunks');
+            const oldManifests = path.join(oldDir, 'manifests');
+            try {
+                if (fs.existsSync(oldChunks)) {
+                    fs.readdirSync(oldChunks).forEach(f => {
+                        const src = path.join(oldChunks, f);
+                        const dst = path.join(chunksDir, f);
+                        if (!fs.existsSync(dst)) fs.renameSync(src, dst);
+                    });
+                }
+                if (fs.existsSync(oldManifests)) {
+                    fs.readdirSync(oldManifests).forEach(f => {
+                        const src = path.join(oldManifests, f);
+                        const dst = path.join(manifestsDir, f);
+                        if (!fs.existsSync(dst)) fs.renameSync(src, dst);
+                    });
+                }
+            } catch (e) {
+                // ignore migration errors
+            }
+        }
+    }
+
+    return { userDir, chunksDir, manifestsDir };
+};
+
 // File Storage Config
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -205,11 +277,7 @@ const upload = multer({ storage: storage });
 // Cloud chunk storage (encrypted blobs): keep server blind
 const cloudStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const userDir = path.join(CLOUD_DIR, 'users', String(req.user.id));
-        const chunksDir = path.join(userDir, 'chunks');
-        if (!fs.existsSync(chunksDir)) {
-            fs.mkdirSync(chunksDir, { recursive: true });
-        }
+        const { chunksDir } = ensureStealthCloudUserDirs(req.user);
         cb(null, chunksDir);
     },
     filename: (req, file, cb) => {
@@ -236,7 +304,8 @@ app.post('/api/register', authRateLimiter, async (req, res) => {
 
     try {
         const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
-        db.run(`INSERT INTO users (email, password) VALUES (?, ?)`, [email, hashedPassword], function(err) {
+        const u = (crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'));
+        db.run(`INSERT INTO users (user_uuid, email, password) VALUES (?, ?, ?)`, [u, email, hashedPassword], function(err) {
             if (err) {
                 if (err.message.includes('UNIQUE constraint failed')) return res.status(409).json({ error: 'Email already exists' });
                 return res.status(500).json({ error: err.message });
@@ -267,7 +336,7 @@ app.post('/api/login', authRateLimiter, (req, res) => {
                 if (devErr) console.error('Device reg error:', devErr);
                 
                 // Generate Token BOUND to this device
-                const token = jwt.sign({ id: user.id, email: user.email, device_uuid: device_uuid }, JWT_SECRET, { expiresIn: '30d' });
+                const token = jwt.sign({ id: user.id, user_uuid: user.user_uuid, email: user.email, device_uuid: device_uuid }, JWT_SECRET, { expiresIn: '30d' });
                 res.json({ token, userId: user.id });
             }
         );
@@ -429,7 +498,7 @@ app.get('/api/cloud/chunks/:chunkId', authenticateToken, (req, res) => {
     if (!chunkId.match(/^[a-f0-9]{64}$/i)) {
         return res.status(400).json({ error: 'Invalid chunk id' });
     }
-    const chunksRoot = path.join(CLOUD_DIR, 'users', String(req.user.id), 'chunks');
+    const { chunksDir: chunksRoot } = ensureStealthCloudUserDirs(req.user);
     const chunkPath = path.join(chunksRoot, chunkId);
     if (!chunkPath.startsWith(chunksRoot)) {
         return res.status(403).json({ error: 'Access denied' });
@@ -457,9 +526,7 @@ app.post('/api/cloud/manifests', authenticateToken, (req, res) => {
     const safeId = manifestId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 128);
     if (!safeId) return res.status(400).json({ error: 'Invalid manifestId' });
 
-    const userDir = path.join(CLOUD_DIR, 'users', String(req.user.id));
-    const manifestsDir = path.join(userDir, 'manifests');
-    if (!fs.existsSync(manifestsDir)) fs.mkdirSync(manifestsDir, { recursive: true });
+    const { manifestsDir } = ensureStealthCloudUserDirs(req.user);
 
     const manifestPath = path.join(manifestsDir, `${safeId}.json`);
     const payload = {
@@ -478,7 +545,7 @@ app.get('/api/cloud/manifests', authenticateToken, (req, res) => {
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.setHeader('ETag', '');
-    const manifestsDir = path.join(CLOUD_DIR, 'users', String(req.user.id), 'manifests');
+    const { manifestsDir } = ensureStealthCloudUserDirs(req.user);
     if (!fs.existsSync(manifestsDir)) return res.json({ manifests: [] });
     const list = fs.readdirSync(manifestsDir)
         .filter(f => f.endsWith('.json'))
@@ -495,7 +562,7 @@ app.get('/api/cloud/manifests/:manifestId', authenticateToken, (req, res) => {
     res.setHeader('ETag', '');
     const safeId = (req.params.manifestId || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 128);
     if (!safeId) return res.status(400).json({ error: 'Invalid manifest id' });
-    const manifestsRoot = path.join(CLOUD_DIR, 'users', String(req.user.id), 'manifests');
+    const { manifestsDir: manifestsRoot } = ensureStealthCloudUserDirs(req.user);
     const manifestPath = path.join(manifestsRoot, `${safeId}.json`);
     if (!manifestPath.startsWith(manifestsRoot)) {
         return res.status(403).json({ error: 'Access denied' });
