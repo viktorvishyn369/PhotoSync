@@ -39,6 +39,17 @@ UPLOAD_DIR="${INSTALL_DIR}/server/uploads"
 DB_PATH="${INSTALL_DIR}/server/backup.db"
 CLOUD_DIR="${INSTALL_DIR}/server/cloud"
 
+stop_existing_service() {
+  if $SUDO systemctl list-unit-files | grep -q "^${SERVICE_NAME}\.service"; then
+    $SUDO systemctl stop "${SERVICE_NAME}" 2>/dev/null || true
+  fi
+
+  # Best-effort: stop any leftover PhotoSync node process (do not kill unrelated services)
+  if command -v pkill >/dev/null 2>&1; then
+    $SUDO pkill -f "${INSTALL_DIR}/server/server\.js" 2>/dev/null || true
+  fi
+}
+
 ensure_cmd() {
   local cmd="$1"
   local install_hint="$2"
@@ -105,6 +116,8 @@ install_node_if_missing() {
 
 clone_or_update_repo() {
   log "[3/6] Downloading / updating PhotoSync..."
+
+  stop_existing_service
 
   if [ -d "$INSTALL_DIR/.git" ]; then
     warn "⚠ Existing repo found at $INSTALL_DIR. Updating..."
