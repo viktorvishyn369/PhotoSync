@@ -87,6 +87,41 @@ export default function App() {
     const b64 = naclUtil.encodeBase64(encryptedBytes);
     await FileSystem.writeAsStringAsync(tmpUri, b64, { encoding: FileSystem.EncodingType.Base64 });
 
+    console.log('StealthCloud chunk upload:', chunkId);
+
+    // Prefer react-native-blob-util for reliable multipart uploads in RN builds
+    let ReactNativeBlobUtil = null;
+    try {
+      const mod = require('react-native-blob-util');
+      ReactNativeBlobUtil = mod && (mod.default || mod);
+    } catch (e) {
+      ReactNativeBlobUtil = null;
+    }
+
+    const url = `${SERVER_URL}/api/cloud/chunks`;
+    const headers = {
+      'X-Chunk-Id': chunkId,
+      ...(config && config.headers ? config.headers : {})
+    };
+
+    if (ReactNativeBlobUtil && ReactNativeBlobUtil.fetch && ReactNativeBlobUtil.wrap) {
+      const filePath = tmpUri.startsWith('file://') ? tmpUri.replace('file://', '') : tmpUri;
+      try {
+        await ReactNativeBlobUtil.fetch('POST', url, headers, [
+          {
+            name: 'chunk',
+            filename: `${chunkId}.bin`,
+            type: 'application/octet-stream',
+            data: ReactNativeBlobUtil.wrap(filePath)
+          }
+        ]);
+        return;
+      } catch (e) {
+        console.warn('StealthCloud chunk upload failed (blob-util), falling back to axios:', e?.message || String(e));
+      }
+    }
+
+    // Fallback: axios + FormData (may be less reliable in some RN builds)
     const formData = new FormData();
     formData.append('chunk', {
       uri: tmpUri,
@@ -94,16 +129,15 @@ export default function App() {
       type: 'application/octet-stream'
     });
 
-    await axios.post(`${SERVER_URL}/api/cloud/chunks`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        'X-Chunk-Id': chunkId,
-        ...config.headers
-      },
-      timeout: 60000
-    });
-
-    await FileSystem.deleteAsync(tmpUri, { idempotent: true });
+    try {
+      await axios.post(url, formData, {
+        headers,
+        timeout: 60000
+      });
+    } catch (e) {
+      console.warn('StealthCloud chunk upload failed (axios):', e?.message || String(e));
+      throw e;
+    }
   };
 
   const stealthCloudBackup = async () => {
