@@ -166,6 +166,28 @@ The server will:
 - **Isolated storage**: Each device has separate folder
 - **No cloud**: Everything runs locally on your network
 
+## 🕶️ StealthCloud (optional)
+
+StealthCloud is PhotoSync's optional cloud mode for people who want:
+
+- Access to backups **from anywhere** (not just your home Wi‑Fi)
+- **High availability** infrastructure (targeting 99.99% uptime on fast, secure servers)
+- A simple paid plan (target: **$1 / 10GB per month**, subject to change)
+
+### How StealthCloud works (why it’s safe)
+
+StealthCloud is designed as a **zero‑knowledge encrypted backup**:
+
+- Your photos/videos are **encrypted on your phone before upload**.
+- The encrypted data is **split into chunks**.
+- Only encrypted chunks + encrypted manifests are uploaded.
+
+Because the server never receives the plaintext (and is not supposed to receive the keys), StealthCloud is designed so that **without your credentials it cannot reconstruct your files**. Even if someone captured traffic or obtained stored blobs, they would only get encrypted chunk data.
+
+### Restore on any phone
+
+If you sign in with the **same credentials (email + password)**, your device identity is reproduced deterministically, so you can **restore the same backups on any phone** — anytime, from any location.
+
 ### Remote access over HTTPS (recommended)
 
 If you use PhotoSync over the public internet, **do not use plain HTTP**.

@@ -115,6 +115,9 @@ server/uploads/*
 server/backup.db
 server/backup.db-journal
 
+# Business-only scripts (not for public repo)
+install-server-PhotoSync.sh
+
 # Mobile specific
 mobile/android/app/build/
 mobile/android/.gradle/
