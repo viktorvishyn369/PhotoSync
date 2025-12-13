@@ -62,6 +62,36 @@ sudo curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main
 - Enter server URL: `http://YOUR_SERVER_IP:3000`
 - Register and start backing up!
 
+#### Finding your server IP (Desktop Tray app)
+
+If you installed PhotoSync **with the desktop tray app**, it will automatically detect your machine's local IP address(es) and show them in the tray menu.
+
+- **macOS:** Look for the PhotoSync icon in the **menu bar** (top-right). Click it.
+- **Windows:** Look for the PhotoSync icon in the **system tray** (bottom-right near the clock). You may need to click the **^** arrow to see hidden tray icons.
+- **Linux:** Look for the PhotoSync icon in the **panel tray area** (top/bottom bar depending on your desktop environment).
+
+Then:
+
+1. Open the tray menu.
+2. Go to **Local IP Addresses**.
+3. Click **Copy URL: http://<ip>:3000** (recommended) and paste it into the mobile app.
+
+If you don't see any IPs listed, make sure:
+
+- You are connected to Wi-Fi/Ethernet (not airplane mode)
+- You are not only on VPN (VPN-only interfaces can hide LAN IPs)
+- Your phone and computer are on the same Wi‑Fi network
+
+**Fallback: find your IP manually**
+
+- **macOS:** System Settings → Network → select Wi‑Fi/Ethernet → look for **IP Address**
+- **Windows:** Settings → Network & Internet → Wi‑Fi/Ethernet → properties → **IPv4 address**
+- **Linux:** Settings → Network → select your connection → **IPv4** (or run `ip a`)
+
+Use that IP like: `http://192.168.1.123:3000`
+
+P.S. **With the same credentials (email + password), your backed up photos/videos can be restored on any phone** (login with the same credentials and run Restore/Sync).
+
 ---
 
 ##  File Storage
