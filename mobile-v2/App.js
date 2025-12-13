@@ -138,10 +138,22 @@ export default function App() {
   const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(false);
   const [wasBackgroundedDuringWork, setWasBackgroundedDuringWork] = useState(false);
+  const [backgroundWarnEligible, setBackgroundWarnEligible] = useState(false);
+
+  const backgroundWarnEligibleRef = useRef(false);
+  const wasBackgroundedDuringWorkRef = useRef(false);
 
   useEffect(() => {
     checkLogin();
   }, []);
+
+  useEffect(() => {
+    backgroundWarnEligibleRef.current = backgroundWarnEligible;
+  }, [backgroundWarnEligible]);
+
+  useEffect(() => {
+    wasBackgroundedDuringWorkRef.current = wasBackgroundedDuringWork;
+  }, [wasBackgroundedDuringWork]);
 
   useEffect(() => {
     if (loading) {
@@ -153,23 +165,20 @@ export default function App() {
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (nextState) => {
-      if (loading && nextState !== 'active') {
+      if (backgroundWarnEligibleRef.current && nextState === 'background') {
         setWasBackgroundedDuringWork(true);
+        return;
       }
-      if (!loading && nextState === 'active' && wasBackgroundedDuringWork) {
+
+      if (backgroundWarnEligibleRef.current && nextState === 'active' && wasBackgroundedDuringWorkRef.current) {
         setWasBackgroundedDuringWork(false);
+        Alert.alert('Backup paused', 'The app was backgrounded during an operation. Keep the app open during backup/sync for best reliability.');
       }
     });
     return () => {
       sub.remove();
     };
-  }, [loading, wasBackgroundedDuringWork]);
-
-  useEffect(() => {
-    if (wasBackgroundedDuringWork && !loading) {
-      Alert.alert('Backup paused', 'The app was backgrounded during an operation. Keep the app open during backup/sync for best reliability.');
-    }
-  }, [wasBackgroundedDuringWork, loading]);
+  }, []);
 
   const openLink = async (url) => {
     try {
@@ -404,6 +413,8 @@ export default function App() {
     setStatus('Scanning local media...');
     setProgress(0);
     setLoading(true);
+    setBackgroundWarnEligible(true);
+    setWasBackgroundedDuringWork(false);
 
     try {
       const config = await getAuthHeaders();
@@ -679,6 +690,8 @@ export default function App() {
       Alert.alert('StealthCloud Backup Error', e && e.message ? e.message : 'Unknown error');
     } finally {
       setLoading(false);
+      setBackgroundWarnEligible(false);
+      setWasBackgroundedDuringWork(false);
       setProgress(0);
     }
   };
@@ -691,14 +704,21 @@ export default function App() {
     if (permission.status !== 'granted') {
       Alert.alert('Permission Required', 'Media library permission is required to sync photos to your gallery.');
       setLoading(false);
+      setBackgroundWarnEligible(false);
+      setWasBackgroundedDuringWork(false);
       return;
     }
     if (Platform.OS === 'ios' && permission.accessPrivileges && permission.accessPrivileges !== 'all') {
       setStatus('Limited photo access. Please allow full access to sync from cloud.');
       Alert.alert('Limited Photos Access', 'Sync needs Full Access to your Photos library.');
       setLoading(false);
+      setBackgroundWarnEligible(false);
+      setWasBackgroundedDuringWork(false);
       return;
     }
+
+    setBackgroundWarnEligible(true);
+    setWasBackgroundedDuringWork(false);
 
     try {
       const config = await getAuthHeaders();
@@ -1007,6 +1027,8 @@ export default function App() {
       }
     } finally {
       setLoading(false);
+      setBackgroundWarnEligible(false);
+      setWasBackgroundedDuringWork(false);
     }
   };
 
@@ -1338,6 +1360,8 @@ export default function App() {
     setStatus('Scanning local media...');
     setProgress(0); // Reset progress
     setLoading(true);
+    setBackgroundWarnEligible(true);
+    setWasBackgroundedDuringWork(false);
 
     try {
       console.log('\n🔍 ===== BACKUP TRACE START =====');
@@ -1559,6 +1583,8 @@ export default function App() {
     if (permission.status !== 'granted') {
       Alert.alert('Permission Required', 'Media library permission is required to sync photos to your gallery.');
       setLoading(false);
+      setBackgroundWarnEligible(false);
+      setWasBackgroundedDuringWork(false);
       return;
     }
 
@@ -1570,8 +1596,13 @@ export default function App() {
         'Sync from Cloud needs Full Access to your Photos library to check what already exists and save new items.\n\nGo to Settings → PhotoSync → Photos → Full Access.'
       );
       setLoading(false);
+      setBackgroundWarnEligible(false);
+      setWasBackgroundedDuringWork(false);
       return;
     }
+
+    setBackgroundWarnEligible(true);
+    setWasBackgroundedDuringWork(false);
     
     console.log('\n⬇️  ===== RESTORE TRACE START =====');
     
