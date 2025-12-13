@@ -128,6 +128,16 @@ export default function App() {
     return out;
   };
 
+  const stripContentType = (headers) => {
+    const out = { ...(headers || {}) };
+    for (const k of Object.keys(out)) {
+      if (k.toLowerCase() === 'content-type') {
+        delete out[k];
+      }
+    }
+    return out;
+  };
+
   const stealthCloudUploadEncryptedChunk = async ({ SERVER_URL, config, chunkId, encryptedBytes }) => {
     const tmpUri = `${FileSystem.cacheDirectory}sc_${chunkId}.bin`;
     const b64 = naclUtil.encodeBase64(encryptedBytes);
@@ -145,10 +155,11 @@ export default function App() {
     }
 
     const url = `${SERVER_URL}/api/cloud/chunks`;
-    const headers = sanitizeHeaders({
+    // IMPORTANT: do not send Content-Type from auth headers; multipart must set its own boundary
+    const headers = stripContentType(sanitizeHeaders({
       'X-Chunk-Id': chunkId,
       ...(config && config.headers ? config.headers : {})
-    });
+    }));
 
     if (ReactNativeBlobUtil && ReactNativeBlobUtil.fetch && ReactNativeBlobUtil.wrap) {
       const filePath = tmpUri.startsWith('file://') ? tmpUri.replace('file://', '') : tmpUri;
