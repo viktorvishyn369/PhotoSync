@@ -62,7 +62,7 @@ sudo curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main
 - Enter server URL: `http://YOUR_SERVER_IP:3000`
 - Register and start backing up!
 
-#### Finding your server IP (Desktop Tray app)
+#### Find your server IP (Desktop Tray app)
 
 If you installed PhotoSync **with the desktop tray app**, it will automatically detect your machine's local IP address(es) and show them in the tray menu.
 
@@ -70,11 +70,18 @@ If you installed PhotoSync **with the desktop tray app**, it will automatically 
 - **Windows:** Look for the PhotoSync icon in the **system tray** (bottom-right near the clock). You may need to click the **^** arrow to see hidden tray icons.
 - **Linux:** Look for the PhotoSync icon in the **panel tray area** (top/bottom bar depending on your desktop environment).
 
+In the tray menu you will see:
+
+- `Local IP (click to copy)`
+- One or more IP addresses (example: `192.168.1.123`)
+
 Then:
 
 1. Open the tray menu.
-2. Go to **Local IP Addresses**.
-3. Click **Copy URL: http://<ip>:3000** (recommended) and paste it into the mobile app.
+2. Click the IP address you want (it copies to clipboard).
+3. In the mobile app, paste it as a full URL:
+   - `http://<copied-ip>:3000`
+   - Example: `http://192.168.1.123:3000`
 
 If you don't see any IPs listed, make sure:
 
@@ -290,14 +297,16 @@ See [PRIVACY_POLICY.md](PRIVACY_POLICY.md)
 ### Can't connect from mobile app
 
 **For Local Server (same WiFi network):**
-1. **Auto-detected:** The app automatically detects your local server at `192.168.1.222:3000`
-2. If auto-detection doesn't work, find your server's local IP manually:
-   - **Mac/Linux:** `ifconfig | grep "inet " | grep -v 127.0.0.1`
-   - **Windows:** `ipconfig` (look for IPv4 Address)
-3. Use this IP in app: `http://192.168.1.XXX:3000`
+1. If you are using the **Desktop Tray app**, open the tray menu and click the IP under `Local IP (click to copy)` (it copies the IP only).
+2. In the mobile app, use it as a full URL:
+   - `http://<ip>:3000`
+   - Example: `http://192.168.1.100:3000`
+3. If you are not using the tray app (or it shows no IP), find your server IP manually:
+   - **macOS:** System Settings → Network → your connection → **IP Address**
+   - **Windows:** `ipconfig` → **IPv4 Address**
+   - **Linux:** Settings → Network → your connection → **IPv4** (or run `ip a`)
 4. ❌ **Don't use:** `localhost` or `127.0.0.1` (won't work from phone!)
-5. ✅ **Use:** Your actual local IP like `192.168.1.100`
-6. Ensure phone and server on **same WiFi network**
+5. ✅ Ensure the phone and computer are on the **same Wi‑Fi network**
 
 **For Remote Server (internet/VPS):**
 1. Prefer HTTPS via Cloudflare Tunnel / reverse proxy.
