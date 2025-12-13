@@ -1,6 +1,6 @@
 #!/bin/bash
 # PhotoSync Server - StealthLynk (stealthlynk.io) Installer
-# Usage (recommended): curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/main/install-server-PhotoSync.sh | bash
+# Usage (recommended): curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoSync/master/install-server-PhotoSync.sh | bash
 
 set -euo pipefail
 
