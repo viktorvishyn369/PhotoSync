@@ -358,7 +358,7 @@ export default function App() {
                   const plaintext = naclUtil.decodeBase64(nextB64);
                   const nonce = makeChunkNonce(baseNonce16, chunkIndex);
                   const boxed = nacl.secretbox(plaintext, nonce, fileKey);
-                  const chunkId = sha256(naclUtil.encodeBase64(boxed));
+                  const chunkId = sha256.create().update(boxed).hex();
 
                   setStatus(`Uploading ${i + 1}/${allAssets.assets.length}`);
                   await stealthCloudUploadEncryptedChunk({ SERVER_URL, config, chunkId, encryptedBytes: boxed });
