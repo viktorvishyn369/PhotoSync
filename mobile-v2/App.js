@@ -1046,8 +1046,6 @@ export default function App() {
         setLoading(false);
         return;
       }
-      // Keep a generic copy for runtime usage (some flows need UUID before per-email lookup is ready)
-      await SecureStore.setItemAsync('device_uuid', deviceId);
       setDeviceUuid(deviceId);
       const endpoint = type === 'register' ? '/api/register' : '/api/login';
 
@@ -1407,7 +1405,13 @@ export default function App() {
 
   const logout = async () => {
     await SecureStore.deleteItemAsync('auth_token');
+    await SecureStore.deleteItemAsync('user_id');
+    await SecureStore.deleteItemAsync('user_email');
+    await SecureStore.deleteItemAsync('device_uuid');
     setToken(null);
+    setUserId(null);
+    setDeviceUuid(null);
+    setPassword('');
     setView('auth');
   };
 
@@ -1418,9 +1422,6 @@ export default function App() {
     let uuid = deviceUuid;
     if (!uuid) {
       uuid = await getDeviceUUID(storedEmail);
-    }
-    if (!uuid) {
-      uuid = await SecureStore.getItemAsync('device_uuid');
     }
     if (!uuid) {
       throw new Error('Device UUID missing. Please logout and login again.');
@@ -2088,8 +2089,9 @@ export default function App() {
               <TouchableOpacity 
                 style={[styles.toggleBtn, serverType === 'stealthcloud' && styles.toggleBtnActive]}
                 onPress={async () => {
-                  setServerType('stealthcloud');
                   await SecureStore.setItemAsync('server_type', 'stealthcloud');
+                  setServerType('stealthcloud');
+                  await logout();
                 }}>
                 <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.toggleText, serverType === 'stealthcloud' && styles.toggleTextActive]}>
                   StealthCloud
@@ -2153,8 +2155,8 @@ export default function App() {
                   } else if (serverType === 'local') {
                     await SecureStore.setItemAsync('local_host', localHost);
                   }
+                  await logout();
                   Alert.alert('Saved', 'Server settings updated');
-                  setView('home');
                 }}>
                 <Text style={styles.btnText}>Save Changes</Text>
               </TouchableOpacity>
