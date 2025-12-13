@@ -905,19 +905,19 @@ export default function App() {
   const getServerUrl = () => {
     const PORT = '3000';
 
-    if (serverType === 'stealthcloud') {
-      return 'https://stealthlynk.io';
-    }
+    const computeServerUrlFromSettings = (type, localHostValue, remoteHostValue) => {
+      if (type === 'stealthcloud') {
+        return 'https://stealthlynk.io';
+      }
+      if (type === 'remote') {
+        const host = normalizeHostInput(remoteHostValue);
+        return host ? `https://${host}:${PORT}` : `https://localhost:${PORT}`;
+      }
+      const host = normalizeHostInput(localHostValue) || 'localhost';
+      return `http://${host}:${PORT}`;
+    };
 
-    if (serverType === 'remote') {
-      const host = normalizeHostInput(remoteHost);
-      // Remote uses HTTPS with the same :3000 port convention as Local.
-      return host ? `https://${host}:${PORT}` : `https://localhost:${PORT}`;
-    }
-
-    // Local always uses HTTP on :3000 and expects a LAN IP/host.
-    const host = normalizeHostInput(localHost) || 'localhost';
-    return `http://${host}:${PORT}`;
+    return computeServerUrlFromSettings(serverType, localHost, remoteHost);
   };
 
   const checkLogin = async () => {
@@ -989,15 +989,37 @@ export default function App() {
       }
     }
     
-    setLoading(true);
+    setLoadingSafe(true);
     try {
-      // Save server settings
-      await SecureStore.setItemAsync('server_type', serverType);
-      if (serverType === 'remote') {
-        await SecureStore.setItemAsync('remote_host', remoteHost);
-      } else if (serverType === 'local') {
-        await SecureStore.setItemAsync('local_host', localHost);
+      // Resolve effective server settings.
+      // On cold start, state may still be default while SecureStore already has the user's saved host.
+      // Also avoid overwriting persisted host with empty string.
+      const persistedType = await SecureStore.getItemAsync('server_type');
+      const persistedLocalHost = await SecureStore.getItemAsync('local_host');
+      const persistedRemoteHost = await SecureStore.getItemAsync('remote_host');
+
+      const effectiveType = serverType || persistedType || 'local';
+      const normalizedLocal = normalizeHostInput(localHost);
+      const normalizedRemote = normalizeHostInput(remoteHost);
+      const effectiveLocalHost = (effectiveType === 'local' && !normalizedLocal && persistedLocalHost)
+        ? persistedLocalHost
+        : localHost;
+      const effectiveRemoteHost = (effectiveType === 'remote' && !normalizedRemote && persistedRemoteHost)
+        ? persistedRemoteHost
+        : remoteHost;
+
+      // Persist effective server settings
+      await SecureStore.setItemAsync('server_type', effectiveType);
+      if (effectiveType === 'remote') {
+        await SecureStore.setItemAsync('remote_host', effectiveRemoteHost);
+      } else if (effectiveType === 'local') {
+        await SecureStore.setItemAsync('local_host', effectiveLocalHost);
       }
+
+      // Ensure in-memory state matches what we used.
+      if (serverType !== effectiveType) setServerType(effectiveType);
+      if (effectiveType === 'local' && localHost !== effectiveLocalHost) setLocalHost(effectiveLocalHost);
+      if (effectiveType === 'remote' && remoteHost !== effectiveRemoteHost) setRemoteHost(effectiveRemoteHost);
       
       // Device UUID is derived from email+password and persisted.
       const deviceId = await getDeviceUUID(email, password);
@@ -1010,7 +1032,22 @@ export default function App() {
       await SecureStore.setItemAsync('device_uuid', deviceId);
       setDeviceUuid(deviceId);
       const endpoint = type === 'register' ? '/api/register' : '/api/login';
-      const res = await axios.post(getServerUrl() + endpoint, {
+
+      const PORT = '3000';
+      const computeServerUrlFromSettings = (stype, localHostValue, remoteHostValue) => {
+        if (stype === 'stealthcloud') {
+          return 'https://stealthlynk.io';
+        }
+        if (stype === 'remote') {
+          const host = normalizeHostInput(remoteHostValue);
+          return host ? `https://${host}:${PORT}` : `https://localhost:${PORT}`;
+        }
+        const host = normalizeHostInput(localHostValue) || 'localhost';
+        return `http://${host}:${PORT}`;
+      };
+
+      const authBaseUrl = computeServerUrlFromSettings(effectiveType, effectiveLocalHost, effectiveRemoteHost);
+      const res = await axios.post(authBaseUrl + endpoint, {
         email,
         password,
         device_uuid: deviceId,
@@ -1018,7 +1055,7 @@ export default function App() {
         device_name: Platform.OS + ' ' + Platform.Version
       });
 
-      console.log('Attempting auth:', type, `${getServerUrl()}${endpoint}`, {
+      console.log('Attempting auth:', type, `${authBaseUrl}${endpoint}`, {
         email,
         password,
         device_uuid: deviceId,
@@ -1055,9 +1092,9 @@ export default function App() {
         Alert.alert('Error', 'Cannot reach server. Check your connection.');
       }
     } finally {
-      setLoading(false);
-      setBackgroundWarnEligible(false);
-      setWasBackgroundedDuringWork(false);
+      setLoadingSafe(false);
+      setBackgroundWarnEligibleSafe(false);
+      setWasBackgroundedDuringWorkSafe(false);
     }
   };
 
