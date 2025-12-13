@@ -183,21 +183,32 @@ export default function App() {
 
     // iOS: avoid react-native-blob-util networking (it can crash with nil values in NSDictionary)
     if (Platform.OS === 'ios' && FileSystem && typeof FileSystem.uploadAsync === 'function') {
+      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
       const headers = {
         ...stripContentType(baseHeaders),
         'Content-Type': 'application/octet-stream'
       };
-      const res = await FileSystem.uploadAsync(url, tmpUri, {
-        httpMethod: 'POST',
-        uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
-        headers
-      });
-      const status = res && typeof res.status === 'number' ? res.status : 0;
-      if (status >= 300) {
-        throw new Error(`Chunk upload failed: HTTP ${status}${res?.body ? ` ${res.body}` : ''}`);
+      let lastErr = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const res = await FileSystem.uploadAsync(url, tmpUri, {
+          httpMethod: 'POST',
+          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+          headers
+        });
+        const status = res && typeof res.status === 'number' ? res.status : 0;
+        if (status < 300) {
+          await FileSystem.deleteAsync(tmpUri, { idempotent: true });
+          return;
+        }
+        const body = res && typeof res.body === 'string' ? res.body : '';
+        lastErr = new Error(`Chunk upload failed: HTTP ${status}${body ? ` ${body}` : ''}`);
+        if (status === 429 || status === 503) {
+          await sleep(250 * (attempt + 1));
+          continue;
+        }
+        throw lastErr;
       }
-      await FileSystem.deleteAsync(tmpUri, { idempotent: true });
-      return;
+      throw lastErr || new Error('Chunk upload failed');
     }
 
     // Prefer react-native-blob-util for reliable multipart uploads in RN builds
@@ -375,12 +386,34 @@ export default function App() {
 
         if (Platform.OS === 'ios') {
           const fileUri = filePath.startsWith('/') ? `file://${filePath}` : (filePath || tmpUri);
-          const fileB64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
+          try {
+            const info = await FileSystem.getInfoAsync(fileUri);
+            originalSize = info && typeof info.size === 'number' ? Number(info.size) : null;
+          } catch (e) {
+            originalSize = null;
+          }
+
           const effectiveBytes = CHUNK_PLAINTEXT_BYTES - (CHUNK_PLAINTEXT_BYTES % 3);
-          const chunkB64Len = (effectiveBytes / 3) * 4;
-          for (let offset = 0; offset < fileB64.length; offset += chunkB64Len) {
-            const nextB64 = fileB64.slice(offset, offset + chunkB64Len);
+          let position = 0;
+          while (true) {
+            let nextB64 = '';
+            try {
+              nextB64 = await FileSystem.readAsStringAsync(fileUri, {
+                encoding: FileSystem.EncodingType.Base64,
+                position,
+                length: effectiveBytes
+              });
+            } catch (e) {
+              // Fallback if this FileSystem build doesn't support ranged reads
+              const allB64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
+              const b64Offset = Math.floor((position / 3) * 4);
+              const chunkB64Len = (effectiveBytes / 3) * 4;
+              nextB64 = allB64.slice(b64Offset, b64Offset + chunkB64Len);
+            }
+            if (!nextB64) break;
             const plaintext = naclUtil.decodeBase64(nextB64);
+            if (!plaintext || plaintext.length === 0) break;
+
             const nonce = makeChunkNonce(baseNonce16, chunkIndex);
             const boxed = nacl.secretbox(plaintext, nonce, fileKey);
             const chunkId = sha256.create().update(boxed).hex();
@@ -389,9 +422,13 @@ export default function App() {
             chunkIds.push(chunkId);
             chunkSizes.push(plaintext.length);
             chunkIndex += 1;
+            position += plaintext.length;
             setProgress((i + 1) / allAssets.assets.length);
+
+            if (plaintext.length < effectiveBytes) {
+              break;
+            }
           }
-          originalSize = Math.floor((fileB64.length * 3) / 4);
         } else {
           // react-native-blob-util readStream uses base64 chunks
           let ReactNativeBlobUtil = null;
