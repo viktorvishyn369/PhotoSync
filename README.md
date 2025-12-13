@@ -112,7 +112,7 @@ uploads/
       └── ...
 ```
 
-Each device gets its own UUID folder for complete isolation.
+Each set of credentials (email + password) maps to a deterministic UUID folder, so storage is isolated per account.
 
 ## 🔧 Server Management
 
@@ -167,10 +167,10 @@ The server will:
 
 ## 🔒 Security
 
-- **Device UUID binding**: Each device uses a UUID derived from your login credentials (email + password) and stored locally for reuse.
+- **Credentials-derived UUID binding**: A UUID is derived from your login credentials (email + password) and stored locally for reuse.
 - **JWT authentication**: Tokens bound to device UUID
 - **Path validation**: Prevents directory traversal
-- **Isolated storage**: Each device has separate folder
+- **Isolated storage**: Each credentials-derived UUID has a separate folder
 - **No cloud**: Everything runs locally on your network
 
 ## 🕶️ StealthCloud (optional)
@@ -244,7 +244,7 @@ It is persisted in `expo-secure-store` so the same UUID is reused for backup/syn
 
 Important notes:
 
-- **Same email + same password = same UUID** (even after reinstall)
+- **Same email + same password = same UUID** (even after reinstall and on any phone)
 - If you **change your password**, the UUID will change
 - The server never tells the app to regenerate the UUID. The server only stores what the app sends.
 
