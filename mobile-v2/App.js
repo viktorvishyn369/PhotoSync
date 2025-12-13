@@ -276,41 +276,55 @@ export default function App() {
         const stream = await ReactNativeBlobUtil.fs.readStream(filePath, 'base64', CHUNK_PLAINTEXT_BYTES);
 
         await new Promise((resolve, reject) => {
-          let processing = Promise.resolve();
+          const queue = [];
+          let draining = false;
+          let ended = false;
 
           stream.open();
 
           stream.onData((chunkB64) => {
-            // Some stream implementations can emit multiple events before pause takes effect.
-            // Queue processing to guarantee sequential uploads.
-            stream.pause();
-            processing = processing
-              .then(async () => {
-                const plaintext = naclUtil.decodeBase64(chunkB64);
-                const nonce = makeChunkNonce(baseNonce16, chunkIndex);
-                const boxed = nacl.secretbox(plaintext, nonce, fileKey);
-                const chunkId = sha256(naclUtil.encodeBase64(boxed));
+            queue.push(chunkB64);
 
-                setStatus(`Uploading ${i + 1}/${allAssets.assets.length}`);
-                await stealthCloudUploadEncryptedChunk({ SERVER_URL, config, chunkId, encryptedBytes: boxed });
+            if (draining) return;
+            draining = true;
 
-                chunkIds.push(chunkId);
-                chunkSizes.push(plaintext.length);
-                chunkIndex += 1;
+            (async () => {
+              try {
+                while (queue.length) {
+                  const nextB64 = queue.shift();
+                  const plaintext = naclUtil.decodeBase64(nextB64);
+                  const nonce = makeChunkNonce(baseNonce16, chunkIndex);
+                  const boxed = nacl.secretbox(plaintext, nonce, fileKey);
+                  const chunkId = sha256(naclUtil.encodeBase64(boxed));
 
-                setProgress((i + 1) / allAssets.assets.length);
-              })
-              .then(() => {
-                stream.resume();
-              })
-              .catch((e) => {
+                  setStatus(`Uploading ${i + 1}/${allAssets.assets.length}`);
+                  await stealthCloudUploadEncryptedChunk({ SERVER_URL, config, chunkId, encryptedBytes: boxed });
+
+                  chunkIds.push(chunkId);
+                  chunkSizes.push(plaintext.length);
+                  chunkIndex += 1;
+
+                  setProgress((i + 1) / allAssets.assets.length);
+                }
+              } catch (e) {
                 reject(e);
-              });
+                return;
+              } finally {
+                draining = false;
+              }
+
+              if (ended && queue.length === 0) {
+                resolve();
+              }
+            })();
           });
 
           stream.onError((e) => reject(e));
           stream.onEnd(() => {
-            processing.then(resolve).catch(reject);
+            ended = true;
+            if (!draining && queue.length === 0) {
+              resolve();
+            }
           });
         });
 
