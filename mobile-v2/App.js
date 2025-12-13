@@ -40,6 +40,88 @@ const chooseStealthCloudChunkBytes = ({ platform, originalSize }) => {
   return 4 * MB;
 };
 
+const normalizeFilenameForCompare = (name) => {
+  if (!name || typeof name !== 'string') return null;
+  const s = name.split('?')[0];
+  const parts = s.split('/');
+  const base = parts.length ? parts[parts.length - 1] : s;
+  const trimmed = base.trim();
+  if (!trimmed) return null;
+  return trimmed.toLowerCase();
+};
+
+const buildLocalFilenameSetPaged = async ({ mediaType, album = null }) => {
+  const PAGE_SIZE = 500;
+  let after = null;
+  const set = new Set();
+  let totalCount = null;
+  let scanned = 0;
+
+  while (true) {
+    const page = await MediaLibrary.getAssetsAsync({
+      first: PAGE_SIZE,
+      after: after || undefined,
+      mediaType,
+      album: album || undefined,
+    });
+
+    if (totalCount === null && page && typeof page.totalCount === 'number') {
+      totalCount = page.totalCount;
+    }
+
+    const assets = page && Array.isArray(page.assets) ? page.assets : [];
+    if (assets.length === 0) break;
+
+    for (const a of assets) {
+      const n1 = normalizeFilenameForCompare(a && a.filename ? a.filename : null);
+      if (n1) {
+        set.add(n1);
+        scanned += 1;
+        continue;
+      }
+
+      try {
+        const info = await MediaLibrary.getAssetInfoAsync(a.id);
+        const n2 = normalizeFilenameForCompare(info && info.filename ? info.filename : null);
+        if (n2) set.add(n2);
+      } catch (e) {
+        // ignore
+      }
+      scanned += 1;
+    }
+
+    after = page && page.endCursor ? page.endCursor : null;
+    if (!page || page.hasNextPage !== true) break;
+  }
+
+  return { set, totalCount, scanned };
+};
+
+const buildLocalAssetIdSetPaged = async ({ album }) => {
+  const PAGE_SIZE = 500;
+  let after = null;
+  const set = new Set();
+
+  while (true) {
+    const page = await MediaLibrary.getAssetsAsync({
+      first: PAGE_SIZE,
+      after: after || undefined,
+      album,
+    });
+
+    const assets = page && Array.isArray(page.assets) ? page.assets : [];
+    if (assets.length === 0) break;
+    for (const a of assets) {
+      if (a && a.id) set.add(a.id);
+    }
+
+    after = page && page.endCursor ? page.endCursor : null;
+    if (!page || page.hasNextPage !== true) break;
+  }
+
+  return set;
+};
+
 export default function App() {
   const [view, setView] = useState('loading'); // loading, auth, home, settings
   const [authMode, setAuthMode] = useState('login'); // login, register
@@ -327,6 +409,9 @@ export default function App() {
       const config = await getAuthHeaders();
       const SERVER_URL = getServerUrl();
       const masterKey = await getStealthCloudMasterKey();
+
+      const localIndex = await buildLocalFilenameSetPaged({ mediaType: ['photo', 'video'] });
+      const localFilenames = localIndex.set;
 
       const PAGE_SIZE = 250;
       let after = null;
@@ -646,6 +731,13 @@ export default function App() {
 
         const manifest = JSON.parse(naclUtil.encodeUTF8(manifestPlain));
 
+        const filename = manifest.filename || `${mid}.bin`;
+        const normalizedFilename = normalizeFilenameForCompare(filename);
+        if (normalizedFilename && localFilenames.has(normalizedFilename)) {
+          setProgress((i + 1) / manifests.length);
+          continue;
+        }
+
         const wrapNonce = naclUtil.decodeBase64(manifest.wrapNonce);
         const wrappedFileKey = naclUtil.decodeBase64(manifest.wrappedFileKey);
         const fileKey = nacl.secretbox.open(wrappedFileKey, wrapNonce, masterKey);
@@ -654,7 +746,6 @@ export default function App() {
         const baseNonce16 = naclUtil.decodeBase64(manifest.baseNonce16);
 
         // Reconstruct plaintext to a temp file (append per chunk)
-        const filename = manifest.filename || `${mid}.bin`;
         const outUri = `${FileSystem.cacheDirectory}sc_restore_${filename}`;
         const outPath = normalizeFilePath(outUri);
         await FileSystem.deleteAsync(outUri, { idempotent: true });
@@ -692,6 +783,9 @@ export default function App() {
         await MediaLibrary.saveToLibraryAsync(outUri);
         await FileSystem.deleteAsync(outUri, { idempotent: true });
         restored += 1;
+        if (normalizedFilename) {
+          localFilenames.add(normalizedFilename);
+        }
         setProgress((i + 1) / manifests.length);
       }
 
@@ -1247,17 +1341,25 @@ export default function App() {
 
     try {
       console.log('\n🔍 ===== BACKUP TRACE START =====');
-      
-      // 1. Get All Assets
-      setStatus('Loading photos...');
-      const allAssets = await MediaLibrary.getAssetsAsync({
-        first: 10000,
-        mediaType: ['photo', 'video'],
-      });
-      
-      console.log(`📱 Total assets on device: ${allAssets.assets.length}`);
-      
-      // Exclude files already in PhotoSync album to prevent re-uploading restored files
+
+      // 1. Get Server List
+      setStatus('Checking server files...');
+      const config = await getAuthHeaders();
+      const SERVER_URL = getServerUrl();
+      console.log('Using server URL for backup:', SERVER_URL);
+      const serverRes = await axios.get(`${SERVER_URL}/api/files`, config);
+
+      console.log(`\n☁️  Server response: ${serverRes.data.files.length} files`);
+
+      const serverFiles = new Set(
+        (serverRes.data.files || [])
+          .map(f => normalizeFilenameForCompare(f && f.filename ? f.filename : null))
+          .filter(Boolean)
+      );
+
+      console.log(`📊 Server files (unique, lowercase): ${serverFiles.size}`);
+
+      // 2. Exclude files already in PhotoSync album to prevent re-uploading restored files
       const albums = await MediaLibrary.getAlbumsAsync();
       console.log(`📂 All albums: ${albums.map(a => `${a.title} (${a.assetCount})`).join(', ')}`);
       
@@ -1265,68 +1367,75 @@ export default function App() {
       let excludedIds = new Set();
       
       if (photoSyncAlbum) {
-        const albumAssets = await MediaLibrary.getAssetsAsync({
-          album: photoSyncAlbum,
-          first: 10000,
-        });
-        excludedIds = new Set(albumAssets.assets.map(a => a.id));
+        excludedIds = await buildLocalAssetIdSetPaged({ album: photoSyncAlbum });
         console.log(`📂 PhotoSync album has ${excludedIds.size} files (will exclude)`);
       }
-      
-      const assets = {
-        assets: allAssets.assets.filter(a => !excludedIds.has(a.id))
-      };
-      
-      console.log(`📊 Assets to backup (after excluding PhotoSync): ${assets.assets.length}`);
-      setStatus(`Found ${assets.assets.length} photos/videos to check...`);
 
-      if (assets.assets.length === 0) {
+      // 3. Scan local assets (paged) and decide which are missing on the server
+      setStatus('Loading photos...');
+      let after = null;
+      let totalCount = null;
+      let checkedCount = 0;
+      const toUpload = [];
+      const duplicateFilenames = {};
+
+      while (true) {
+        const page = await MediaLibrary.getAssetsAsync({
+          first: 500,
+          after: after || undefined,
+          mediaType: ['photo', 'video'],
+        });
+
+        if (totalCount === null && page && typeof page.totalCount === 'number') {
+          totalCount = page.totalCount;
+        }
+
+        const pageAssets = page && Array.isArray(page.assets) ? page.assets : [];
+        if (pageAssets.length === 0) break;
+
+        for (const asset of pageAssets) {
+          if (excludedIds.has(asset.id)) continue;
+          checkedCount += 1;
+          setStatus(`Checking ${checkedCount}/${totalCount || '?'}`);
+
+          let actualFilename = normalizeFilenameForCompare(asset && asset.filename ? asset.filename : null);
+          if (Platform.OS === 'ios' || !actualFilename) {
+            try {
+              const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
+              actualFilename = normalizeFilenameForCompare(assetInfo && assetInfo.filename ? assetInfo.filename : null) || actualFilename;
+            } catch (e) {
+              actualFilename = actualFilename;
+            }
+          }
+
+          if (!actualFilename) continue;
+
+          if (duplicateFilenames[actualFilename]) {
+            duplicateFilenames[actualFilename]++;
+          } else {
+            duplicateFilenames[actualFilename] = 1;
+          }
+
+          const exists = serverFiles.has(actualFilename);
+          if (!exists) {
+            toUpload.push(asset);
+          }
+        }
+
+        after = page && page.endCursor ? page.endCursor : null;
+        if (!page || page.hasNextPage !== true) break;
+      }
+
+      console.log(`📊 Assets to backup (after excluding PhotoSync): ${checkedCount}`);
+      setStatus(`Found ${checkedCount} photos/videos to check...`);
+
+      if (checkedCount === 0) {
         setStatus('No photos found to backup.');
         Alert.alert('No Photos', 'No photos or videos found on device.');
         setLoading(false);
         return;
       }
 
-      // 2. Get Server List
-      setStatus('Checking server files...');
-      const config = await getAuthHeaders();
-      const SERVER_URL = getServerUrl();
-      console.log('Using server URL for backup:', SERVER_URL);
-      const serverRes = await axios.get(`${SERVER_URL}/api/files`, config);
-      
-      console.log(`\n☁️  Server response: ${serverRes.data.files.length} files`);
-      
-      // Create case-insensitive set of server filenames
-      const serverFiles = new Set(serverRes.data.files.map(f => f.filename.toLowerCase()));
-      
-      console.log(`📊 Server files (unique, lowercase): ${serverFiles.size}`);
-
-      // 3. Identify Missing on Server
-      const toUpload = [];
-      const duplicateFilenames = {}; // Track duplicate filenames on device
-      
-      for (const asset of assets.assets) {
-        // Get actual filename (iOS returns UUID in asset.filename, need to check assetInfo)
-        const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
-        const actualFilename = assetInfo.filename || asset.filename;
-        const normalizedFilename = actualFilename.toLowerCase();
-        
-        // Track if we've seen this filename before (device duplicates)
-        if (duplicateFilenames[normalizedFilename]) {
-          duplicateFilenames[normalizedFilename]++;
-          console.log(`⚠️ DUPLICATE on device: ${actualFilename} (${duplicateFilenames[normalizedFilename]} copies)`);
-        } else {
-          duplicateFilenames[normalizedFilename] = 1;
-        }
-        
-        // Case-insensitive comparison (IMG_0001.MOV == img_0001.mov)
-        const exists = serverFiles.has(normalizedFilename);
-        console.log(`Checking ${actualFilename}: ${exists ? 'EXISTS on server' : 'MISSING from server'}`);
-        if (!exists) {
-          toUpload.push(asset);
-        }
-      }
-      
       // Log device duplicates
       const deviceDuplicates = Object.entries(duplicateFilenames).filter(([_, count]) => count > 1);
       if (deviceDuplicates.length > 0) {
@@ -1336,17 +1445,17 @@ export default function App() {
         });
       }
       
-      console.log(`Local: ${assets.assets.length}, Server: ${serverFiles.size}, To upload: ${toUpload.length}`);
+      console.log(`Local: ${checkedCount}, Server: ${serverFiles.size}, To upload: ${toUpload.length}`);
       
       if (toUpload.length === 0) {
-        setStatus(`All ${assets.assets.length} files already backed up.`);
-        Alert.alert('Up to Date', `All ${assets.assets.length} photos/videos are already on the server.`);
+        setStatus(`All ${checkedCount} files already backed up.`);
+        Alert.alert('Up to Date', `All ${checkedCount} photos/videos are already on the server.`);
         setLoading(false);
         return;
       }
 
       // Show summary before starting
-      setStatus(`Ready to backup ${toUpload.length} of ${assets.assets.length} files...`);
+      setStatus(`Ready to backup ${toUpload.length} of ${checkedCount} files...`);
       await new Promise(resolve => setTimeout(resolve, 1000)); // Brief pause to show message
 
       // 4. Upload Loop with per-file error handling
@@ -1410,9 +1519,9 @@ export default function App() {
 
       // Show detailed completion status
       console.log('\n📊 ===== BACKUP SUMMARY =====');
-      console.log(`Total on device: ${allAssets.assets.length}`);
+      console.log(`Total on device: ${totalCount || checkedCount}`);
       console.log(`PhotoSync excluded: ${excludedIds.size}`);
-      console.log(`To check: ${assets.assets.length}`);
+      console.log(`To check: ${checkedCount}`);
       console.log(`On server before: ${serverFiles.size}`);
       console.log(`Marked for upload: ${toUpload.length}`);
       console.log(`Actually uploaded: ${successCount}`);
@@ -1478,38 +1587,10 @@ export default function App() {
 
       // 2. Get local device photos to check what already exists
       setStatus('Checking local photos...');
-      const localAssets = await MediaLibrary.getAssetsAsync({
-        first: 10000,
-        mediaType: ['photo', 'video'],
-      });
-      
-      console.log(`📱 Total assets on device: ${localAssets.assets.length}`);
-      
-      // Create a set of local filenames (case-insensitive for comparison)
-      const localFilenames = new Set();
-      const localDuplicates = {};
-      
-      for (const asset of localAssets.assets) {
-        const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
-        const filename = assetInfo.filename || asset.filename;
-        const normalizedFilename = filename.toLowerCase();
-        
-        // Track duplicates
-        if (localDuplicates[normalizedFilename]) {
-          localDuplicates[normalizedFilename]++;
-        } else {
-          localDuplicates[normalizedFilename] = 1;
-        }
-        
-        // Normalize to lowercase for case-insensitive comparison
-        localFilenames.add(normalizedFilename);
-      }
-      
-      const deviceDups = Object.entries(localDuplicates).filter(([_, count]) => count > 1);
+      const localIndex = await buildLocalFilenameSetPaged({ mediaType: ['photo', 'video'] });
+      const localFilenames = localIndex.set;
+      console.log(`📱 Scanned assets on device: ${localIndex.scanned}${localIndex.totalCount ? `/${localIndex.totalCount}` : ''}`);
       console.log(`📊 Unique filenames on device: ${localFilenames.size}`);
-      if (deviceDups.length > 0) {
-        console.log(`⚠️  Device has ${deviceDups.length} duplicate filenames`);
-      }
       
       if (serverFiles.length === 0) {
         setStatus('No files on server to download.');
@@ -1520,8 +1601,8 @@ export default function App() {
       
       // Only download files that don't exist locally (case-insensitive check)
       const toDownload = serverFiles.filter(f => {
-        const normalizedFilename = f.filename.toLowerCase();
-        const exists = localFilenames.has(normalizedFilename);
+        const normalizedFilename = normalizeFilenameForCompare(f && f.filename ? f.filename : null);
+        const exists = normalizedFilename ? localFilenames.has(normalizedFilename) : false;
         if (exists) {
           console.log(`✓ Skipping ${f.filename} - already exists locally`);
         } else {
@@ -1633,7 +1714,7 @@ export default function App() {
       
       console.log('\n📊 ===== RESTORE SUMMARY =====');
       console.log(`Server files: ${serverFiles.length}`);
-      console.log(`Device assets before: ${localAssets.assets.length}`);
+      console.log(`Device assets before: ${localIndex.scanned}${localIndex.totalCount ? `/${localIndex.totalCount}` : ''}`);
       console.log(`Unique filenames on device: ${localFilenames.size}`);
       console.log(`Marked for download: ${toDownload.length}`);
       console.log(`Successfully downloaded: ${successCount}`);
