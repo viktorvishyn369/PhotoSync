@@ -153,6 +153,12 @@ export default function App() {
   const setBackgroundWarnEligibleSafe = (value) => {
     backgroundWarnEligibleRef.current = value;
     setBackgroundWarnEligible(value);
+
+    if (!value) {
+      wasBackgroundedDuringWorkRef.current = false;
+      setWasBackgroundedDuringWork(false);
+      backgroundedAtMsRef.current = 0;
+    }
   };
 
   const setWasBackgroundedDuringWorkSafe = (value) => {
