@@ -9,6 +9,12 @@ on:
 jobs:
   build-macos-x64:
     runs-on: macos-15-intel
+    env:
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
     steps:
       - uses: actions/checkout@v4
       
@@ -31,6 +37,19 @@ jobs:
         run: |
           cd server-tray
           npm run rebuild-native:x64
+
+      - name: Prepare macOS code signing & notarization env
+        if: ${{ env.CSC_LINK != '' && env.CSC_KEY_PASSWORD != '' && env.APPLE_API_KEY_BASE64 != '' && env.APPLE_API_KEY_ID != '' && env.APPLE_API_ISSUER != '' }}
+        run: |
+          mkdir -p "$HOME/private_keys"
+          python3 - <<'PY'
+          import base64, os, pathlib
+          key_b64 = os.environ.get('APPLE_API_KEY_BASE64', '')
+          key_id = os.environ.get('APPLE_API_KEY_ID', '')
+          out = pathlib.Path(os.environ['HOME']) / 'private_keys' / f'AuthKey_{key_id}.p8'
+          out.write_bytes(base64.b64decode(key_b64.encode('utf-8')))
+          PY
+          echo "APPLE_API_KEY=$HOME/private_keys/AuthKey_${APPLE_API_KEY_ID}.p8" >> "$GITHUB_ENV"
       
       - name: Build macOS x64 DMG
         run: |
@@ -47,6 +66,12 @@ jobs:
 
   build-macos-arm64:
     runs-on: macos-14
+    env:
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
     steps:
       - uses: actions/checkout@v4
 
@@ -69,6 +94,19 @@ jobs:
         run: |
           cd server-tray
           npm run rebuild-native:arm64
+
+      - name: Prepare macOS code signing & notarization env
+        if: ${{ env.CSC_LINK != '' && env.CSC_KEY_PASSWORD != '' && env.APPLE_API_KEY_BASE64 != '' && env.APPLE_API_KEY_ID != '' && env.APPLE_API_ISSUER != '' }}
+        run: |
+          mkdir -p "$HOME/private_keys"
+          python3 - <<'PY'
+          import base64, os, pathlib
+          key_b64 = os.environ.get('APPLE_API_KEY_BASE64', '')
+          key_id = os.environ.get('APPLE_API_KEY_ID', '')
+          out = pathlib.Path(os.environ['HOME']) / 'private_keys' / f'AuthKey_{key_id}.p8'
+          out.write_bytes(base64.b64decode(key_b64.encode('utf-8')))
+          PY
+          echo "APPLE_API_KEY=$HOME/private_keys/AuthKey_${APPLE_API_KEY_ID}.p8" >> "$GITHUB_ENV"
 
       - name: Build macOS arm64 DMG
         run: |
