@@ -214,8 +214,6 @@ export default function App() {
         if (Platform.OS === 'android' && backgroundForMs > 0 && backgroundForMs < 1500) {
           return;
         }
-
-        Alert.alert('Backup paused', 'The app was backgrounded during an operation. Keep the app open during backup/sync for best reliability.');
       }
     });
     return () => {
