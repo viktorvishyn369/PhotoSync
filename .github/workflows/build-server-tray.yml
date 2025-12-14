@@ -7,13 +7,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-macos:
-    runs-on: macos-latest
+  build-macos-x64:
+    runs-on: macos-13
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
@@ -30,17 +30,55 @@ jobs:
       - name: Rebuild native modules for Electron
         run: |
           cd server-tray
-          npm run rebuild-native
+          npm run rebuild-native:x64
       
-      - name: Build macOS apps
+      - name: Build macOS x64 DMG
         run: |
           cd server-tray
-          npm run build-mac
+          npm run build-mac:x64
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: macos-builds
+          name: macos-x64-builds
+          path: |
+            server-tray/dist/*.dmg
+            server-tray/dist/*.zip
+
+  build-macos-arm64:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd server-tray
+          npm install
+
+      - name: Rebuild native modules for Electron
+        run: |
+          cd server-tray
+          npm run rebuild-native:arm64
+
+      - name: Build macOS arm64 DMG
+        run: |
+          cd server-tray
+          npm run build-mac:arm64
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-arm64-builds
           path: |
             server-tray/dist/*.dmg
             server-tray/dist/*.zip
@@ -48,10 +86,10 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
@@ -85,10 +123,10 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
@@ -122,7 +160,7 @@ jobs:
             server-tray/dist/*.rpm
 
   create-release:
-    needs: [build-macos, build-windows, build-linux]
+    needs: [build-macos-x64, build-macos-arm64, build-windows, build-linux]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
@@ -133,7 +171,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            macos-builds/*
+            macos-x64-builds/*
+            macos-arm64-builds/*
             windows-builds/*
             linux-builds/*
           draft: false
