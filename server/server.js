@@ -28,8 +28,16 @@ const FORCE_HTTPS_REDIRECT = String(process.env.FORCE_HTTPS_REDIRECT || '').toLo
 // Use home directory for universal path across any user/OS
 const os = require('os');
 const HOME_DIR = os.homedir();
-const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(HOME_DIR, 'PhotoSync', 'server', 'uploads');
-const CLOUD_DIR = process.env.CLOUD_DIR || path.join(HOME_DIR, 'PhotoSync', 'server', 'cloud');
+
+const resolveDataDir = () => {
+    if (process.env.PHOTOSYNC_DATA_DIR) return process.env.PHOTOSYNC_DATA_DIR;
+    if (process.env.DB_PATH) return path.dirname(process.env.DB_PATH);
+    return path.join(HOME_DIR, 'PhotoSync', 'server');
+};
+
+const DATA_DIR = resolveDataDir();
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(DATA_DIR, 'uploads');
+const CLOUD_DIR = process.env.CLOUD_DIR || path.join(DATA_DIR, 'cloud');
 
 // Security & Middleware
 app.use(helmet()); // Sets various HTTP headers for security
@@ -76,10 +84,9 @@ const AUTH_RATE_LIMIT_WINDOW_MS = Number.parseInt(process.env.AUTH_RATE_LIMIT_WI
 const AUTH_RATE_LIMIT_MAX = Number.parseInt(process.env.AUTH_RATE_LIMIT_MAX || '25', 10);
 const authRateLimiter = createRateLimiter({ windowMs: AUTH_RATE_LIMIT_WINDOW_MS, max: AUTH_RATE_LIMIT_MAX });
 
-// Ensure PhotoSync directory exists
-const PHOTOSYNC_DIR = path.join(HOME_DIR, 'PhotoSync', 'server');
-if (!fs.existsSync(PHOTOSYNC_DIR)) {
-    fs.mkdirSync(PHOTOSYNC_DIR, { recursive: true });
+// Ensure base data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
 // Ensure upload directory exists
@@ -93,7 +100,7 @@ if (!fs.existsSync(CLOUD_DIR)) {
 }
 
 // Database Setup
-const DB_PATH = process.env.DB_PATH || path.join(PHOTOSYNC_DIR, 'backup.db');
+const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'backup.db');
 const db = new sqlite3.Database(DB_PATH, (err) => {
     if (err) console.error('DB Error:', err.message);
     else console.log(`Connected to SQLite database at ${DB_PATH}`);
