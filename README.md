@@ -1,6 +1,6 @@
-# PhotoSync - Self-Hosted Photo Backup
+# PhotoSync — Self‑Hosted. Encrypted Cloud. iOS ↔ Android.
 
-Secure, private photo backup system. Your photos, your server, your control.
+Back up photos/videos to your own server or StealthCloud, and restore on any phone with the same credentials.
 
 ---
 
@@ -154,8 +154,8 @@ This means StealthCloud stores encrypted data and is designed so that it cannot 
 Remote works like Local mode, but your server runs on a remote machine (VPS/home server) instead of your personal computer.
 
 - Install PhotoSync Server on the remote machine (headless is recommended).
-- Expose it securely over HTTPS (TLS) using a reverse proxy or tunnel (for example Cloudflare Tunnel).
-- In the mobile app (Remote), enter the server host only (domain or IP). The app will use HTTPS for the connection.
+- Enable HTTPS (TLS) on the remote server so traffic is encrypted end-to-end.
+- In the mobile app (Remote), enter the server public IP only (digits only). The app will use HTTPS for the connection.
 
 ---
 
@@ -217,10 +217,9 @@ See [PRIVACY_POLICY.md](PRIVACY_POLICY.md)
 
 **For Remote Server (internet/VPS):**
 1. Install PhotoSync Server on your remote machine (VPS/home server).
-2. Put it behind HTTPS (TLS) using a reverse proxy or tunnel (for example Cloudflare Tunnel).
-3. In the app (Remote), enter the host only (no `https://`, no port):
-   - Example domain: `photosync.example.com`
-   - Example IP: `203.0.113.10`
+2. Enable HTTPS (TLS) for PhotoSync Server on the remote machine (install a certificate and open the HTTPS port).
+3. In the app (Remote), enter the public IP address (digits only):
+   - Example: `203.0.113.10`
 
 **Common issues:**
 - Server not running? Check tray icon or terminal
