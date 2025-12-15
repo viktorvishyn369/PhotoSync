@@ -40,6 +40,8 @@ const chooseStealthCloudChunkBytes = ({ platform, originalSize }) => {
   return 4 * MB;
 };
 
+const GITHUB_RELEASES_LATEST_URL = 'https://github.com/viktorvishyn369/PhotoSync/releases/latest';
+
 const normalizeFilenameForCompare = (name) => {
   if (!name || typeof name !== 'string') return null;
   const s = name.split('?')[0];
@@ -2112,8 +2114,8 @@ export default function App() {
                 </Text>
               ) : (
                 <Text style={styles.serverExplanationText}>
-                  🕶️ <Text style={styles.boldText}>StealthCloud:</Text> Zero-knowledge encrypted cloud{'\n'}
-                  (server stores encrypted shards only — cannot view your files)
+                  <Text style={styles.boldText}>StealthCloud:</Text> No server required{'\n'}
+                  Create an account, login, then Backup / Sync / Clean Duplicates.
                 </Text>
               )}
             </View>
@@ -2163,22 +2165,54 @@ export default function App() {
             )}
           </View>
 
-          {serverType !== 'stealthcloud' && (
-            <View style={styles.settingsCard}>
-              <Text style={styles.settingsTitle}>Server Setup</Text>
+          <View style={styles.settingsCard}>
+            <Text style={styles.settingsTitle}>Quick Setup</Text>
+            {serverType !== 'stealthcloud' ? (
+              <>
+                <Text style={styles.serverExplanationText}>
+                  <Text style={styles.boldText}>1)</Text> Download the server app on your computer:
+                </Text>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    Clipboard.setString(GITHUB_RELEASES_LATEST_URL);
+                    Alert.alert('Copied', 'GitHub Releases link copied.');
+                  }}
+                  onLongPress={() => openLink(GITHUB_RELEASES_LATEST_URL)}>
+                  <Text style={styles.codeLine} numberOfLines={1} ellipsizeMode="middle">{GITHUB_RELEASES_LATEST_URL}</Text>
+                  <Text style={styles.codeHint}>Tap to copy • Long-press to open</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
               <Text style={styles.serverExplanationText}>
-                Follow the latest install steps on GitHub.
+                <Text style={styles.boldText}>StealthCloud:</Text> No server setup.
               </Text>
-              <TouchableOpacity 
-                style={styles.setupGuideBtn}
-                onPress={() => openLink('https://github.com/viktorvishyn369/PhotoSync#-quick-start')}>
-                <Text style={styles.setupGuideBtnText}>Open README Instructions</Text>
-              </TouchableOpacity>
+            )}
+
+            {serverType === 'local' && (
               <Text style={styles.serverExplanationText}>
-                Includes prerequisites, one-line install, and troubleshooting.
+                <Text style={styles.boldText}>2)</Text> Install + run it (tray/menu bar){'\n'}
+                <Text style={styles.boldText}>3)</Text> Copy IP from tray → <Text style={styles.boldText}>Local IP Addresses</Text>{'\n'}
+                <Text style={styles.boldText}>4)</Text> Here: <Text style={styles.boldText}>Local</Text> → paste IP → <Text style={styles.boldText}>Save Changes</Text>{'\n'}
+                <Text style={styles.boldText}>5)</Text> <Text style={styles.boldText}>Create Account</Text> / <Text style={styles.boldText}>Login</Text> → <Text style={styles.boldText}>Backup Photos</Text>
               </Text>
-            </View>
-          )}
+            )}
+
+            {serverType === 'remote' && (
+              <Text style={styles.serverExplanationText}>
+                <Text style={styles.boldText}>2)</Text> Run the server on your VPS/home server{'\n'}
+                <Text style={styles.boldText}>3)</Text> Enable HTTPS (TLS) on port 3000{'\n'}
+                <Text style={styles.boldText}>4)</Text> Here: <Text style={styles.boldText}>Remote</Text> → enter host (IP/domain) → <Text style={styles.boldText}>Save Changes</Text>{'\n'}
+                <Text style={styles.boldText}>5)</Text> <Text style={styles.boldText}>Login</Text> → <Text style={styles.boldText}>Backup Photos</Text> / <Text style={styles.boldText}>Sync from Cloud</Text>
+              </Text>
+            )}
+
+            {serverType === 'stealthcloud' && (
+              <Text style={styles.serverExplanationText}>
+                <Text style={styles.boldText}>Create Account</Text> / <Text style={styles.boldText}>Login</Text>, then use <Text style={styles.boldText}>Backup Photos</Text>, <Text style={styles.boldText}>Sync from Cloud</Text>, and <Text style={styles.boldText}>Clean Duplicates</Text>.
+              </Text>
+            )}
+          </View>
           
           <View style={styles.settingsFooter}>
             <Text style={styles.footerVersion}>PhotoSync v1.0.0</Text>
@@ -2665,9 +2699,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   serverInfoText: {
-    color: '#03DAC6',
-    fontSize: 13,
-    fontWeight: '500',
+    color: '#9D9D9D',
+    fontSize: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    flex: 1,
   },
   headerButtons: {
     flexDirection: 'row',
