@@ -101,7 +101,51 @@ sudo journalctl -u photosync -f
 
 **For Desktop (Tray App):**
 - Use the tray icon menu to Start/Stop/Restart
-- Or run manually: `cd ~/PhotoSync/server && node server.js`
+- Or run manually (headless server): `cd server && npm install && npm start`
+
+## Advanced: Manual Installation (any machine)
+
+Prerequisites:
+
+- Node.js 18+ (Node 20 LTS recommended)
+- Git
+- Build tools for native dependencies (`sqlite3`, `bcrypt`)
+  - macOS: Xcode Command Line Tools
+  - Windows: Visual Studio Build Tools + Python
+  - Linux: build-essential / gcc / g++ / make + Python
+
+Clone the repo:
+
+```bash
+git clone https://github.com/viktorvishyn369/PhotoSync.git
+cd PhotoSync
+```
+
+Run as a desktop tray app (includes server):
+
+```bash
+cd server
+npm install
+
+cd ../server-tray
+npm install
+npm start
+```
+
+Run as a headless server:
+
+```bash
+cd server
+npm install
+npm start
+```
+
+Optional configuration (environment variables):
+
+- `PORT` (default: `3000`)
+- `PHOTOSYNC_DATA_DIR` (sets the base data folder)
+- `UPLOAD_DIR`, `DB_PATH`, `CLOUD_DIR` (advanced overrides)
+- HTTPS (TLS): `ENABLE_HTTPS=true`, `TLS_KEY_PATH`, `TLS_CERT_PATH`, `HTTPS_PORT`
 
 ## Auto-Updates
 
@@ -183,7 +227,7 @@ Deletion behavior:
 ## Requirements
 
 ### Server
-- Node.js 16+ (auto-installed by scripts)
+- Node.js 18+ (auto-installed by scripts)
 - Port 3000 available
 - Linux, macOS, or Windows
 
