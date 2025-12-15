@@ -151,7 +151,11 @@ This means StealthCloud stores encrypted data and is designed so that it cannot 
 
 ### Remote access
 
-If you connect over the internet, prefer HTTPS via a reverse proxy (for example Cloudflare Tunnel). Avoid plain HTTP on public networks.
+Remote works like Local mode, but your server runs on a remote machine (VPS/home server) instead of your personal computer.
+
+- Install PhotoSync Server on the remote machine (headless is recommended).
+- Expose it securely over HTTPS (TLS) using a reverse proxy or tunnel (for example Cloudflare Tunnel).
+- In the mobile app (Remote), enter the server host only (domain or IP). The app will use HTTPS for the connection.
 
 ---
 
@@ -212,9 +216,11 @@ See [PRIVACY_POLICY.md](PRIVACY_POLICY.md)
 5. Ensure the phone and computer are on the same Wi‑Fi network.
 
 **For Remote Server (internet/VPS):**
-1. Prefer HTTPS via Cloudflare Tunnel / reverse proxy.
-2. In the app (Remote Server), enter a full URL like `https://yourdomain.com`
-3. If you must use direct server access, use native HTTPS (see “Remote access over HTTPS”).
+1. Install PhotoSync Server on your remote machine (VPS/home server).
+2. Put it behind HTTPS (TLS) using a reverse proxy or tunnel (for example Cloudflare Tunnel).
+3. In the app (Remote), enter the host only (no `https://`, no port):
+   - Example domain: `photosync.example.com`
+   - Example IP: `203.0.113.10`
 
 **Common issues:**
 - Server not running? Check tray icon or terminal
