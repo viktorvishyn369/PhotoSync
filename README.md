@@ -23,7 +23,21 @@ Back up photos/videos to your own server or StealthCloud, and restore on any pho
 
 Done. Start backing up your photos/videos.
 
-### Option B: StealthCloud Backup
+### Option B: Remote Backup (VPS / Internet)
+
+Remote works like Local mode, but your server runs on a remote machine (VPS/home server) and the app connects over HTTPS.
+
+1. Install and run PhotoSync Server on your remote machine.
+2. Configure HTTPS (TLS) on the server.
+3. Ensure the server is reachable from the internet on port `3000` with TLS enabled.
+4. In the mobile app Settings:
+   - Select **Remote** connection
+   - Enter your server host (IP address or domain name only — no http(s)://, no port, no path)
+     - Example: `203.0.113.10`
+
+Note: the mobile app automatically connects as `https://<host>:3000` for Remote, so your server must serve HTTPS on port `3000` (for example: `ENABLE_HTTPS=true` and `HTTPS_PORT=3000`).
+
+### Option C: StealthCloud Backup
 
 If you choose **StealthCloud**, you do not need to download/install the server app.
 
@@ -199,7 +213,8 @@ Remote works like Local mode, but your server runs on a remote machine (VPS/home
 
 - Install PhotoSync Server on the remote machine (headless is recommended).
 - Enable HTTPS (TLS) on the remote server so traffic is encrypted end-to-end.
-- In the mobile app (Remote), enter the server public IP address only (IP only — no http(s)://, no port, no domain). The app will use HTTPS for the connection.
+- In the mobile app (Remote), enter the server public host only (IP address or domain name only — no http(s)://, no port, no path).
+- The app connects as `https://<host>:3000` for Remote.
 
 ---
 
@@ -262,7 +277,7 @@ See [PRIVACY_POLICY.md](PRIVACY_POLICY.md)
 **For Remote Server (internet/VPS):**
 1. Install PhotoSync Server on your remote machine (VPS/home server).
 2. Enable HTTPS (TLS) for PhotoSync Server on the remote machine (install a certificate and open the HTTPS port).
-3. In the app (Remote), enter the public IP address only (no http(s)://, no port, no domain):
+3. In the app (Remote), enter the public host only (IP address or domain name only — no http(s)://, no port, no path):
    - Example: `203.0.113.10`
 
 **Common issues:**
