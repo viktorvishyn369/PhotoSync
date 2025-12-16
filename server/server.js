@@ -905,6 +905,46 @@ app.get('/api/files/:filename', authenticateToken, (req, res) => {
 // --- StealthCloud (zero-knowledge) routes ---
 // Server stores encrypted chunks and encrypted manifests only.
 
+app.post('/api/cloud/purge', authenticateToken, async (req, res) => {
+    try {
+        const { chunksDir, manifestsDir } = ensureStealthCloudUserDirs(req.user);
+
+        const countFiles = (dir) => {
+            try {
+                if (!fs.existsSync(dir)) return 0;
+                return fs.readdirSync(dir).filter(f => f && !f.startsWith('.')).length;
+            } catch (e) {
+                return 0;
+            }
+        };
+
+        const chunksBefore = countFiles(chunksDir);
+        const manifestsBefore = countFiles(manifestsDir);
+
+        try { fs.rmSync(chunksDir, { recursive: true, force: true }); } catch (e) {}
+        try { fs.rmSync(manifestsDir, { recursive: true, force: true }); } catch (e) {}
+
+        try { fs.mkdirSync(chunksDir, { recursive: true }); } catch (e) {}
+        try { fs.mkdirSync(manifestsDir, { recursive: true }); } catch (e) {}
+
+        try {
+            await dbRunAsync(`DELETE FROM cloud_chunks WHERE user_id = ?`, [req.user.id]);
+        } catch (e) {
+            return res.status(500).json({ error: 'Failed to clear cloud index' });
+        }
+
+        return res.json({
+            ok: true,
+            deleted: {
+                chunks: chunksBefore,
+                manifests: manifestsBefore
+            }
+        });
+    } catch (e) {
+        return res.status(500).json({ error: 'Purge failed' });
+    }
+});
+
 // Upload encrypted chunk blob
 app.post('/api/cloud/chunks', authenticateToken, requireActiveSubscription, lockStealthCloudUploadForUser, (req, res, next) => {
     const ct = (req.headers['content-type'] || '').toString().toLowerCase();
