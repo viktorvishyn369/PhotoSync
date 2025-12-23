@@ -1168,6 +1168,11 @@ app.post('/api/upload/raw', authenticateToken, (req, res) => {
 
 // List Files (for Sync)
 app.get('/api/files', authenticateToken, (req, res) => {
+    const rawOffset = req.query && req.query.offset ? req.query.offset : null;
+    const rawLimit = req.query && req.query.limit ? req.query.limit : null;
+    const offset = rawOffset !== null ? Math.max(0, parseInt(String(rawOffset), 10) || 0) : 0;
+    const limit = rawLimit !== null ? Math.max(0, parseInt(String(rawLimit), 10) || 0) : 0;
+
     // Read files from device UUID folder
     const deviceDir = path.join(UPLOAD_DIR, req.user.device_uuid);
     
@@ -1176,7 +1181,7 @@ app.get('/api/files', authenticateToken, (req, res) => {
     
     if (!fs.existsSync(deviceDir)) {
         console.log(`[LIST FILES] Directory does not exist`);
-        return res.json({ files: [] });
+        return res.json({ files: [], total: 0 });
     }
     
     try {
@@ -1184,7 +1189,7 @@ app.get('/api/files', authenticateToken, (req, res) => {
         console.log(`[LIST FILES] Found ${allFiles.length} items in directory`);
         
         // Filter out system files and only include actual media files
-        const files = allFiles
+        let files = allFiles
             .filter(filename => !filename.startsWith('.')) // Skip hidden files like .DS_Store
             .filter(filename => fs.statSync(path.join(deviceDir, filename)).isFile()) // Only files, not directories
             .map(filename => {
@@ -1196,9 +1201,15 @@ app.get('/api/files', authenticateToken, (req, res) => {
                     created_at: stats.mtime
                 };
             });
+
+        files.sort((a, b) => String(a.filename || '').localeCompare(String(b.filename || '')));
+        const total = files.length;
+        if (limit > 0) {
+            files = files.slice(offset, offset + limit);
+        }
         
-        console.log(`[LIST FILES] Returning ${files.length} files`);
-        res.json({ files });
+        console.log(`[LIST FILES] Returning ${files.length} files (offset=${offset} limit=${limit || 'all'} total=${total})`);
+        res.json({ files, total });
     } catch (error) {
         console.error('[LIST FILES] Error reading files:', error);
         res.status(500).json({ error: 'Error reading files' });
@@ -1502,17 +1513,29 @@ app.post('/api/cloud/manifests', authenticateToken, requireUploadSubscription, (
 
 // List manifests
 app.get('/api/cloud/manifests', authenticateToken, blockDeletedSubscription, (req, res) => {
+    const rawOffset = req.query && req.query.offset ? req.query.offset : null;
+    const rawLimit = req.query && req.query.limit ? req.query.limit : null;
+    const offset = rawOffset !== null ? Math.max(0, parseInt(String(rawOffset), 10) || 0) : 0;
+    const limit = rawLimit !== null ? Math.max(0, parseInt(String(rawLimit), 10) || 0) : 0;
+
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.setHeader('ETag', '');
     const { manifestsDir } = ensureStealthCloudUserDirs(req.user);
-    if (!fs.existsSync(manifestsDir)) return res.json({ manifests: [] });
-    const list = fs.readdirSync(manifestsDir)
+    if (!fs.existsSync(manifestsDir)) return res.json({ manifests: [], total: 0 });
+    let list = fs.readdirSync(manifestsDir)
         .filter(f => f.endsWith('.json'))
         .filter(f => !f.startsWith('.')) // Skip hidden files like .DS_Store
         .map(f => ({ manifestId: f.replace(/\.json$/, '') }));
-    res.json({ manifests: list });
+
+    list.sort((a, b) => String(a.manifestId || '').localeCompare(String(b.manifestId || '')));
+    const total = list.length;
+    if (limit > 0) {
+        list = list.slice(offset, offset + limit);
+    }
+
+    res.json({ manifests: list, total });
 });
 
 // Download encrypted manifest
