@@ -172,6 +172,7 @@ const createRateLimiter = ({ windowMs, max }) => {
 
         if (entry.count > maxNum) {
             return res.status(429).json({ error: 'Too many attempts. Please try again later.' });
+
         }
 
         next();
@@ -542,6 +543,15 @@ db.serialize(() => {
         size INTEGER,
         created_at INTEGER,
         PRIMARY KEY(user_id, chunk_id),
+        FOREIGN KEY(user_id) REFERENCES users(id)
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS cloud_device_state (
+        user_id INTEGER,
+        device_uuid TEXT,
+        state_json TEXT,
+        updated_at INTEGER,
+        PRIMARY KEY(user_id, device_uuid),
         FOREIGN KEY(user_id) REFERENCES users(id)
     )`);
     
@@ -1314,6 +1324,61 @@ app.post('/api/cloud/purge', authenticateToken, async (req, res) => {
         });
     } catch (e) {
         return res.status(500).json({ error: 'Purge failed' });
+    }
+});
+
+app.get('/api/cloud/device-state', authenticateToken, blockDeletedSubscription, async (req, res) => {
+    try {
+        res.setHeader('Cache-Control', 'no-store');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        res.setHeader('ETag', '');
+
+        const deviceUuid = (req.user && (req.user.device_uuid || req.user.deviceUuid)) ? String(req.user.device_uuid || req.user.deviceUuid) : '';
+        const row = await dbGetAsync(
+            `SELECT state_json, updated_at FROM cloud_device_state WHERE user_id = ? AND device_uuid = ?`,
+            [req.user.id, deviceUuid]
+        );
+        if (!row || !row.state_json) {
+            return res.json({ state: null, updatedAt: null });
+        }
+        let parsed = null;
+        try {
+            parsed = JSON.parse(String(row.state_json));
+        } catch (e) {
+            parsed = null;
+        }
+        return res.json({ state: parsed, updatedAt: row.updated_at || null });
+    } catch (e) {
+        return res.status(500).json({ error: 'Failed to load device state' });
+    }
+});
+
+app.put('/api/cloud/device-state', authenticateToken, blockDeletedSubscription, async (req, res) => {
+    try {
+        const deviceUuid = (req.user && (req.user.device_uuid || req.user.deviceUuid)) ? String(req.user.device_uuid || req.user.deviceUuid) : '';
+        const state = req && req.body && typeof req.body === 'object' ? (req.body.state !== undefined ? req.body.state : req.body) : null;
+
+        if (state === null || typeof state !== 'object' || Array.isArray(state)) {
+            return res.status(400).json({ error: 'state must be an object' });
+        }
+
+        const json = JSON.stringify(state);
+        const bytes = Buffer.byteLength(json, 'utf8');
+        if (bytes > 100 * 1024) {
+            return res.status(413).json({ error: 'state too large' });
+        }
+
+        const now = Date.now();
+        await dbRunAsync(
+            `INSERT INTO cloud_device_state (user_id, device_uuid, state_json, updated_at)
+             VALUES (?, ?, ?, ?)
+             ON CONFLICT(user_id, device_uuid) DO UPDATE SET state_json=excluded.state_json, updated_at=excluded.updated_at`,
+            [req.user.id, deviceUuid, json, now]
+        );
+        return res.json({ ok: true, updatedAt: now });
+    } catch (e) {
+        return res.status(500).json({ error: 'Failed to save device state' });
     }
 });
 
