@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-macos-x64:
-    runs-on: macos-15-intel
+    runs-on: macos-13
     env:
       CSC_LINK: ${{ secrets.CSC_LINK }}
       CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
@@ -55,14 +55,26 @@ jobs:
         run: |
           cd server-tray
           npm run build-mac:x64
+
+      - name: Rename macOS x64 artifacts (user-friendly)
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          mkdir -p server-tray/dist/release
+          for f in server-tray/dist/*.dmg; do
+            [ -e "$f" ] || continue
+            mv "$f" "server-tray/dist/release/PhotoLynk-Desktop-${TAG}-macOS-Intel.dmg"
+          done
+          for f in server-tray/dist/*.zip; do
+            [ -e "$f" ] || continue
+            mv "$f" "server-tray/dist/release/PhotoLynk-Desktop-${TAG}-macOS-Intel.zip"
+          done
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-x64-builds
           path: |
-            server-tray/dist/*.dmg
-            server-tray/dist/*.zip
+            server-tray/dist/release/*
           if-no-files-found: warn
 
   build-macos-arm64:
@@ -114,13 +126,25 @@ jobs:
           cd server-tray
           npm run build-mac:arm64
 
+      - name: Rename macOS arm64 artifacts (user-friendly)
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          mkdir -p server-tray/dist/release
+          for f in server-tray/dist/*.dmg; do
+            [ -e "$f" ] || continue
+            mv "$f" "server-tray/dist/release/PhotoLynk-Desktop-${TAG}-macOS-Apple-Silicon.dmg"
+          done
+          for f in server-tray/dist/*.zip; do
+            [ -e "$f" ] || continue
+            mv "$f" "server-tray/dist/release/PhotoLynk-Desktop-${TAG}-macOS-Apple-Silicon.zip"
+          done
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-arm64-builds
           path: |
-            server-tray/dist/*.dmg
-            server-tray/dist/*.zip
+            server-tray/dist/release/*
           if-no-files-found: warn
 
   build-windows:
@@ -152,13 +176,23 @@ jobs:
         run: |
           cd server-tray
           npm run build-win
+
+      - name: Rename Windows artifacts (user-friendly)
+        shell: pwsh
+        run: |
+          $tag = "${env:GITHUB_REF_NAME}".Replace('v','')
+          New-Item -ItemType Directory -Force -Path "server-tray/dist/release" | Out-Null
+          $exe = Get-ChildItem -Path "server-tray/dist" -Filter "*.exe" | Select-Object -First 1
+          if ($exe) {
+            Move-Item $exe.FullName "server-tray/dist/release/PhotoLynk-Desktop-$tag-Windows-Setup.exe" -Force
+          }
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-builds
           path: |
-            server-tray/dist/*.exe
+            server-tray/dist/release/*
           if-no-files-found: warn
 
   build-linux:
@@ -190,15 +224,30 @@ jobs:
         run: |
           cd server-tray
           npm run build-linux
+
+      - name: Rename Linux artifacts (user-friendly)
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          mkdir -p server-tray/dist/release
+          for f in server-tray/dist/*.AppImage; do
+            [ -e "$f" ] || continue
+            mv "$f" "server-tray/dist/release/PhotoLynk-Desktop-${TAG}-Linux-x64.AppImage"
+          done
+          for f in server-tray/dist/*.deb; do
+            [ -e "$f" ] || continue
+            mv "$f" "server-tray/dist/release/PhotoLynk-Desktop-${TAG}-Linux-x64.deb"
+          done
+          for f in server-tray/dist/*.rpm; do
+            [ -e "$f" ] || continue
+            mv "$f" "server-tray/dist/release/PhotoLynk-Desktop-${TAG}-Linux-x64.rpm"
+          done
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-builds
           path: |
-            server-tray/dist/*.AppImage
-            server-tray/dist/*.deb
-            server-tray/dist/*.rpm
+            server-tray/dist/release/*
           if-no-files-found: warn
 
   create-release:
@@ -206,7 +255,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    if: ${{ always() && startsWith(github.ref, 'refs/tags/') && needs['build-macos-x64'].result == 'success' && needs['build-macos-arm64'].result == 'success' }}
+    if: ${{ startsWith(github.ref, 'refs/tags/') && needs['build-macos-x64'].result == 'success' && needs['build-macos-arm64'].result == 'success' && needs['build-windows'].result == 'success' && needs['build-linux'].result == 'success' }}
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -214,6 +263,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          name: PhotoLynk Desktop Client/Server ${{ github.ref_name }}
+          generate_release_notes: true
           files: |
             macos-x64-builds/*
             macos-arm64-builds/*
