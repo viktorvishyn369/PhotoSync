@@ -903,13 +903,14 @@ app.get('/api/cloud/usage', authenticateToken, async (req, res) => {
 app.post('/api/register', authRateLimiter, async (req, res) => {
     const { email, password, plan_gb } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+    const normalizedEmail = String(email).toLowerCase().trim();
 
     const normalizedPlanGb = normalizeTierGb(plan_gb);
 
     try {
         const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
         const u = (crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'));
-        db.run(`INSERT INTO users (user_uuid, email, password) VALUES (?, ?, ?)`, [u, email, hashedPassword], function(err) {
+        db.run(`INSERT INTO users (user_uuid, email, password) VALUES (?, ?, ?)`, [u, normalizedEmail, hashedPassword], function(err) {
             if (err) {
                 if (err.message.includes('UNIQUE constraint failed')) return res.status(409).json({ error: 'Email already exists' });
                 return res.status(500).json({ error: err.message });
@@ -937,8 +938,9 @@ app.post('/api/register', authRateLimiter, async (req, res) => {
 app.post('/api/login', authRateLimiter, (req, res) => {
     const { email, password, device_uuid, device_name } = req.body;
     if (!email || !password || !device_uuid) return res.status(400).json({ error: 'Missing credentials or device ID' });
+    const normalizedEmail = String(email).toLowerCase().trim();
 
-    db.get(`SELECT * FROM users WHERE email = ?`, [email], async (err, user) => {
+    db.get(`SELECT * FROM users WHERE email = ?`, [normalizedEmail], async (err, user) => {
         if (err) return res.status(500).json({ error: 'Database error' });
         if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
