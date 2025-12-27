@@ -18,24 +18,22 @@ echo -e "${BLUE}║           For Linux Servers (No GUI)               ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# Check if running as root or with sudo - if not, request sudo and re-run
+# Always run as root - switch to root if not already
 if [ "$EUID" -ne 0 ]; then
     echo -e "${YELLOW}⚠${NC}  This installer requires root privileges."
-    echo -e "${BLUE}→${NC}  Requesting sudo access..."
-    exec sudo -E "$0" "$@"
+    echo -e "${BLUE}→${NC}  Switching to root user..."
+    # Try sudo su first, if that fails try just sudo
+    exec sudo su -c "cd /root && bash -c 'curl -fsSL https://raw.githubusercontent.com/viktorvishyn369/PhotoLynk/main/install-server.sh | bash'" || \
+    exec sudo -E bash -c "cd /root && bash '$0' '$@'"
     exit $?
 fi
 
-SUDO=""
+# Now running as root - change to root home directory
+cd /root
+echo -e "${GREEN}✓${NC} Running as root from /root"
 
-# Determine which user should run the systemd service.
-# When script is executed with sudo, use SUDO_USER (the original user who ran sudo)
-# Fall back to current user if not available
-SERVICE_USER="${SUDO_USER:-${USER:-$(whoami)}}"
-if [ "$SERVICE_USER" = "root" ]; then
-    # If still root, try to get a non-root user
-    SERVICE_USER=$(logname 2>/dev/null || echo "root")
-fi
+# Service will run as root for simplicity on VPS
+SERVICE_USER="root"
 
 # Ensure Git is installed (required to clone/pull)
 echo ""
@@ -43,14 +41,14 @@ echo -e "${BLUE}[1/7]${NC} Checking Git..."
 if ! command -v git &> /dev/null; then
     echo -e "${YELLOW}⚠${NC}  Git not found. Installing..."
     if command -v apt-get &> /dev/null; then
-        $SUDO apt-get update -y
-        $SUDO apt-get install -y git
+        apt-get update -y
+        apt-get install -y git
     elif command -v dnf &> /dev/null; then
-        $SUDO dnf install -y git
+        dnf install -y git
     elif command -v yum &> /dev/null; then
-        $SUDO yum install -y git
+        yum install -y git
     elif command -v pacman &> /dev/null; then
-        $SUDO pacman -S --noconfirm git
+        pacman -S --noconfirm git
     else
         echo -e "${RED}✗${NC} Could not install Git automatically"
         echo -e "${YELLOW}⚠${NC}  Please install Git manually, then rerun this script."
@@ -69,16 +67,16 @@ if ! command -v node &> /dev/null; then
     
     # Detect package manager
     if command -v apt-get &> /dev/null; then
-        curl -fsSL https://deb.nodesource.com/setup_lts.x | $SUDO -E bash -
-        $SUDO apt-get install -y nodejs
+        curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+        apt-get install -y nodejs
     elif command -v dnf &> /dev/null; then
-        curl -fsSL https://rpm.nodesource.com/setup_lts.x | $SUDO bash -
-        $SUDO dnf install -y nodejs
+        curl -fsSL https://rpm.nodesource.com/setup_lts.x | bash -
+        dnf install -y nodejs
     elif command -v yum &> /dev/null; then
-        curl -fsSL https://rpm.nodesource.com/setup_lts.x | $SUDO bash -
-        $SUDO yum install -y nodejs
+        curl -fsSL https://rpm.nodesource.com/setup_lts.x | bash -
+        yum install -y nodejs
     elif command -v pacman &> /dev/null; then
-        $SUDO pacman -S --noconfirm nodejs npm
+        pacman -S --noconfirm nodejs npm
     else
         echo -e "${RED}✗${NC} Could not install Node.js automatically"
         echo -e "${YELLOW}⚠${NC}  Please install Node.js from: https://nodejs.org/"
@@ -108,8 +106,8 @@ if [ -d "$INSTALL_DIR" ]; then
     elif [ -n "${GITHUB_TOKEN:-}" ]; then
         REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/viktorvishyn369/PhotoLynk.git"
     fi
-    $SUDO git remote set-url origin "$REPO_URL" >/dev/null 2>&1 || true
-    GIT_TERMINAL_PROMPT=0 $SUDO git pull
+    git remote set-url origin "$REPO_URL" >/dev/null 2>&1 || true
+    GIT_TERMINAL_PROMPT=0 git pull
 else
     REPO_URL="https://github.com/viktorvishyn369/PhotoLynk.git"
     if [ -n "${PHOTOLYNK_GITHUB_TOKEN:-}" ]; then
@@ -117,7 +115,7 @@ else
     elif [ -n "${GITHUB_TOKEN:-}" ]; then
         REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/viktorvishyn369/PhotoLynk.git"
     fi
-    GIT_TERMINAL_PROMPT=0 $SUDO git clone "$REPO_URL" "$INSTALL_DIR"
+    GIT_TERMINAL_PROMPT=0 git clone "$REPO_URL" "$INSTALL_DIR"
     cd "$INSTALL_DIR"
 fi
 echo -e "${GREEN}✓${NC} Downloaded to $INSTALL_DIR"
@@ -126,7 +124,7 @@ echo -e "${GREEN}✓${NC} Downloaded to $INSTALL_DIR"
 echo ""
 echo -e "${BLUE}[4/7]${NC} Installing server dependencies..."
 cd server
-$SUDO npm install --production
+npm install --production
 echo -e "${GREEN}✓${NC} Server dependencies installed"
 
 # Create systemd service
@@ -142,10 +140,10 @@ if [ -d "/data/db" ]; then
     DB_PATH="/data/db/backup.db"
 fi
 
-$SUDO mkdir -p "$UPLOAD_DIR" "$(dirname "$DB_PATH")"
-$SUDO chown -R "$SERVICE_USER":"$SERVICE_USER" "$UPLOAD_DIR" "$(dirname "$DB_PATH")" 2>/dev/null || true
+mkdir -p "$UPLOAD_DIR" "$(dirname "$DB_PATH")"
+chown -R "$SERVICE_USER":"$SERVICE_USER" "$UPLOAD_DIR" "$(dirname "$DB_PATH")" 2>/dev/null || true
 
-$SUDO tee /etc/systemd/system/${SERVICE_NAME}.service > /dev/null <<EOF
+tee /etc/systemd/system/${SERVICE_NAME}.service > /dev/null <<EOF
 [Unit]
 Description=PhotoLynk Server
 After=network.target
@@ -172,20 +170,20 @@ echo -e "${GREEN}✓${NC} Systemd service created"
 # Enable and start service
 echo ""
 echo -e "${BLUE}[6/7]${NC} Starting PhotoLynk service..."
-$SUDO systemctl daemon-reload
-$SUDO systemctl enable "$SERVICE_NAME"
-$SUDO systemctl restart "$SERVICE_NAME"
+systemctl daemon-reload
+systemctl enable "$SERVICE_NAME"
+systemctl restart "$SERVICE_NAME"
 echo -e "${GREEN}✓${NC} Service started and enabled"
 
 # Configure firewall
 echo ""
 echo -e "${BLUE}[7/8]${NC} Configuring firewall..."
 if command -v ufw &> /dev/null; then
-    $SUDO ufw allow 3000/tcp
+    ufw allow 3000/tcp
     echo -e "${GREEN}✓${NC} UFW: Port 3000 opened"
 elif command -v firewall-cmd &> /dev/null; then
-    $SUDO firewall-cmd --permanent --add-port=3000/tcp
-    $SUDO firewall-cmd --reload
+    firewall-cmd --permanent --add-port=3000/tcp
+    firewall-cmd --reload
     echo -e "${GREEN}✓${NC} Firewalld: Port 3000 opened"
 else
     echo -e "${YELLOW}⚠${NC}  No firewall detected, skipping"
@@ -208,8 +206,8 @@ if [[ "$ENABLE_HTTPS" == "y" || "$ENABLE_HTTPS" == "yes" ]]; then
         else
             echo -e "${BLUE}Installing Nginx and Certbot...${NC}"
             if command -v apt-get &> /dev/null; then
-                $SUDO apt-get update -y
-                $SUDO apt-get install -y nginx certbot python3-certbot-nginx
+                apt-get update -y
+                apt-get install -y nginx certbot python3-certbot-nginx
             else
                 echo -e "${YELLOW}⚠${NC} Non-apt system detected. Please install nginx + certbot manually."
                 PROXY_DOMAIN=""
@@ -220,7 +218,7 @@ if [[ "$ENABLE_HTTPS" == "y" || "$ENABLE_HTTPS" == "yes" ]]; then
                 CONFIRM_NGINX=${CONFIRM_NGINX,,}
                 if [[ "$CONFIRM_NGINX" == "y" || "$CONFIRM_NGINX" == "yes" ]]; then
                     echo -e "${BLUE}Configuring Nginx reverse proxy for $PROXY_DOMAIN ...${NC}"
-                    $SUDO tee /etc/nginx/sites-available/photolynk > /dev/null <<EOF
+                    tee /etc/nginx/sites-available/photolynk > /dev/null <<EOF
 server {
   listen 80;
   server_name $PROXY_DOMAIN;
@@ -235,9 +233,9 @@ server {
   }
 }
 EOF
-                    $SUDO ln -sf /etc/nginx/sites-available/photolynk /etc/nginx/sites-enabled/photolynk
-                    $SUDO nginx -t
-                    $SUDO systemctl reload nginx
+                    ln -sf /etc/nginx/sites-available/photolynk /etc/nginx/sites-enabled/photolynk
+                    nginx -t
+                    systemctl reload nginx
                 else
                     echo -e "${YELLOW}⚠${NC} Skipping Nginx config write. HTTPS setup aborted."
                     PROXY_DOMAIN=""
@@ -248,7 +246,7 @@ EOF
                     CONFIRM_CERTBOT=${CONFIRM_CERTBOT,,}
                     if [[ "$CONFIRM_CERTBOT" == "y" || "$CONFIRM_CERTBOT" == "yes" ]]; then
                         echo -e "${BLUE}Running Certbot for $PROXY_DOMAIN ...${NC}"
-                        $SUDO certbot --nginx -d "$PROXY_DOMAIN" -m "$CERTBOT_EMAIL" --agree-tos --non-interactive || true
+                        certbot --nginx -d "$PROXY_DOMAIN" -m "$CERTBOT_EMAIL" --agree-tos --non-interactive || true
                         echo -e "${GREEN}✓${NC} HTTPS setup attempt completed. If Certbot failed, check DNS (A record to this server) and re-run later."
                     else
                         echo -e "${YELLOW}⚠${NC} Certbot skipped. HTTPS not enabled."
@@ -260,8 +258,23 @@ EOF
     fi
 fi
 
-# Get server IP
-SERVER_IP=$(hostname -I | awk '{print $1}')
+# Get server IP - try external/public IP first, fall back to internal
+# Try multiple services to get public IP
+PUBLIC_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || \
+            curl -s --max-time 5 https://ifconfig.me 2>/dev/null || \
+            curl -s --max-time 5 https://icanhazip.com 2>/dev/null || \
+            curl -s --max-time 5 https://checkip.amazonaws.com 2>/dev/null || \
+            echo "")
+
+# Get internal IP as fallback
+INTERNAL_IP=$(hostname -I | awk '{print $1}')
+
+# Use public IP if available, otherwise internal
+if [ -n "$PUBLIC_IP" ]; then
+    SERVER_IP="$PUBLIC_IP"
+else
+    SERVER_IP="$INTERNAL_IP"
+fi
 
 # Determine the best URL to display
 if [ -n "$PROXY_DOMAIN" ]; then
