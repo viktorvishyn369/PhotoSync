@@ -277,6 +277,16 @@ See [PRIVACY_POLICY.md](PRIVACY_POLICY.md)
 - Local mode stores your library on your own machine.
 - StealthCloud (if enabled) stores encrypted backup data.
 
+## Important: Password Reset on Android
+
+Password reset on Android is tied to your device's unique identifier. **If you upgrade your Android OS to a major new version or perform a factory reset, the device identifier may change.** In this case:
+
+- Password reset will no longer work for accounts registered before the upgrade
+- If you forget your password after an OS upgrade, you may lose access to your backed-up data
+- **Always remember your password** or store it securely before upgrading your Android OS
+
+This limitation does not apply to iOS devices.
+
 ## Troubleshooting
 
 ### Can't connect from mobile app
