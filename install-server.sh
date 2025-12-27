@@ -18,16 +18,24 @@ echo -e "${BLUE}║           For Linux Servers (No GUI)               ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# Check if running as root or with sudo
-if [ "$EUID" -eq 0 ]; then 
-    SUDO=""
-else
-    SUDO="sudo"
+# Check if running as root or with sudo - if not, request sudo and re-run
+if [ "$EUID" -ne 0 ]; then
+    echo -e "${YELLOW}⚠${NC}  This installer requires root privileges."
+    echo -e "${BLUE}→${NC}  Requesting sudo access..."
+    exec sudo -E "$0" "$@"
+    exit $?
 fi
 
+SUDO=""
+
 # Determine which user should run the systemd service.
-# When script is executed with sudo, $USER may be "root".
+# When script is executed with sudo, use SUDO_USER (the original user who ran sudo)
+# Fall back to current user if not available
 SERVICE_USER="${SUDO_USER:-${USER:-$(whoami)}}"
+if [ "$SERVICE_USER" = "root" ]; then
+    # If still root, try to get a non-root user
+    SERVICE_USER=$(logname 2>/dev/null || echo "root")
+fi
 
 # Ensure Git is installed (required to clone/pull)
 echo ""
