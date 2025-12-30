@@ -294,6 +294,26 @@ When properly configured with HTTPS:
 
 For maximum privacy, use **StealthCloud**. For full control over your data, use **Local** or **Remote** with your own server.
 
+### Security Audit
+
+We provide a transparent security audit for StealthCloud backup mode. You can:
+
+1. **Read the audit report:** [`security/SECURITY_AUDIT_REPORT.md`](security/SECURITY_AUDIT_REPORT.md)
+2. **Review the audit script:** [`security/security-audit.sh`](security/security-audit.sh)
+3. **Run the audit yourself:** 
+   ```bash
+   cd security && ./security-audit.sh
+   ```
+
+The audit script dynamically analyzes the codebase and generates a report based on actual code findings. It verifies:
+- Encryption algorithms and key derivation
+- Secure token storage (iOS Keychain / Android Keystore)
+- Device binding and authentication
+- Vulnerability scanning (eval, XSS, password logging, etc.)
+- OWASP Mobile Top 10 compliance
+
+> **Note:** The security audit applies only to **StealthCloud** mode. For Local/Remote modes, security depends on your own server configuration.
+
 ---
 
 ## Clean Duplicates (mobile)
