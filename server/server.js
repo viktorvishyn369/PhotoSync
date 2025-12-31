@@ -161,42 +161,40 @@ const TIERING_ENABLED = process.env.TIERING_ENABLED === 'true' && ARCHIVE_DIR !=
 const TIERING_AGE_DAYS = Number.parseInt(process.env.TIERING_AGE_DAYS || '30', 10);
 const TIERING_SIZE_THRESHOLD_MB = Number.parseInt(process.env.TIERING_SIZE_THRESHOLD_MB || '10', 10);
 
-// Real-time tiering: copy chunk to archive immediately after upload, then delete from NVMe
-const copyChunkToArchive = (userKey, chunkId, sourcePath) => {
-    if (!TIERING_ENABLED || !ARCHIVE_DIR) return;
-    setImmediate(() => {
-        try {
-            const archiveChunksDir = path.join(ARCHIVE_DIR, 'users', userKey, 'chunks');
-            const archivePath = path.join(archiveChunksDir, chunkId);
-            if (fs.existsSync(archivePath)) {
-                // Already archived, delete from NVMe
-                try { fs.unlinkSync(sourcePath); } catch (e) {}
-                return;
-            }
-            if (!fs.existsSync(archiveChunksDir)) fs.mkdirSync(archiveChunksDir, { recursive: true });
-            fs.copyFileSync(sourcePath, archivePath);
-            // Delete from NVMe after successful copy to HDD
+// Real-time tiering: copy chunk to HDD SYNCHRONOUSLY, then delete from NVMe
+// This ensures NVMe doesn't fill up with concurrent uploads from many users
+const copyChunkToArchiveSync = (userKey, chunkId, sourcePath) => {
+    if (!TIERING_ENABLED || !ARCHIVE_DIR) return true;
+    try {
+        const archiveChunksDir = path.join(ARCHIVE_DIR, 'users', userKey, 'chunks');
+        const archivePath = path.join(archiveChunksDir, chunkId);
+        if (fs.existsSync(archivePath)) {
+            // Already archived, delete from NVMe
             try { fs.unlinkSync(sourcePath); } catch (e) {}
-            console.log(`[Tiering] Chunk ${chunkId} -> HDD (removed from NVMe)`);
-        } catch (e) {
-            console.warn(`[Tiering] Failed to archive chunk: ${e.message}`);
+            return true;
         }
-    });
+        if (!fs.existsSync(archiveChunksDir)) fs.mkdirSync(archiveChunksDir, { recursive: true });
+        fs.copyFileSync(sourcePath, archivePath);
+        // Delete from NVMe immediately after successful copy to HDD
+        fs.unlinkSync(sourcePath);
+        console.log(`[Tiering] Chunk ${chunkId} -> HDD (NVMe freed)`);
+        return true;
+    } catch (e) {
+        console.warn(`[Tiering] Failed to archive chunk: ${e.message}`);
+        return false;
+    }
 };
 
-// Delete chunk from NVMe cache after download completes
-const deleteChunkFromCache = (chunkPath) => {
+// Delete chunk from NVMe cache (sync)
+const deleteChunkFromCacheSync = (chunkPath) => {
     if (!TIERING_ENABLED) return;
-    setImmediate(() => {
-        try {
-            if (fs.existsSync(chunkPath)) {
-                fs.unlinkSync(chunkPath);
-                console.log(`[Tiering] Removed chunk from NVMe cache after download`);
-            }
-        } catch (e) {
-            // Ignore - file may already be deleted
+    try {
+        if (fs.existsSync(chunkPath)) {
+            fs.unlinkSync(chunkPath);
         }
-    });
+    } catch (e) {
+        // Ignore - file may already be deleted
+    }
 };
 
 const SUBSCRIPTION_GRACE_DAYS = Number.parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || '3', 10);
@@ -1570,8 +1568,8 @@ app.post('/api/cloud/chunks', authenticateToken, requireUploadSubscription, (req
                 `INSERT OR IGNORE INTO cloud_chunks (user_id, chunk_id, size, created_at) VALUES (?, ?, ?, ?)`,
                 [req.user.id, requestedId, req.body.length, Date.now()]
             );
-            // Real-time tiering: copy to HDD immediately (async)
-            copyChunkToArchive(getStealthCloudUserKey(req.user), requestedId, target);
+            // Real-time tiering: copy to HDD synchronously, then free NVMe
+            copyChunkToArchiveSync(getStealthCloudUserKey(req.user), requestedId, target);
             return res.json({ chunkId: requestedId, stored: true });
         } catch (e) {
             return res.status(500).json({ error: 'Chunk verification failed' });
@@ -1644,8 +1642,8 @@ app.post('/api/cloud/chunks', authenticateToken, requireUploadSubscription, (req
                     `INSERT OR IGNORE INTO cloud_chunks (user_id, chunk_id, size, created_at) VALUES (?, ?, ?, ?)`,
                     [req.user.id, requestedId, finalSize, Date.now()]
                 );
-                // Real-time tiering: copy to HDD immediately (async)
-                copyChunkToArchive(getStealthCloudUserKey(req.user), requestedId, finalPath);
+                // Real-time tiering: copy to HDD synchronously, then free NVMe
+                copyChunkToArchiveSync(getStealthCloudUserKey(req.user), requestedId, finalPath);
                 return res.json({ chunkId: requestedId, stored: true });
             }
         } catch (e) {
@@ -1659,8 +1657,8 @@ app.post('/api/cloud/chunks', authenticateToken, requireUploadSubscription, (req
         `INSERT OR IGNORE INTO cloud_chunks (user_id, chunk_id, size, created_at) VALUES (?, ?, ?, ?)`,
         [req.user.id, storedName, tmpSize, Date.now()]
     );
-    // Real-time tiering: copy to HDD immediately (async)
-    copyChunkToArchive(getStealthCloudUserKey(req.user), storedName, tmpPath);
+    // Real-time tiering: copy to HDD synchronously, then free NVMe
+    copyChunkToArchiveSync(getStealthCloudUserKey(req.user), storedName, tmpPath);
     try {
         res.json({ chunkId: storedName, stored: true });
     } finally {
@@ -1684,7 +1682,7 @@ app.get('/api/cloud/chunks/:chunkId', authenticateToken, blockDeletedSubscriptio
     if (fs.existsSync(chunkPath)) {
         res.download(chunkPath, () => {
             // Delete from NVMe cache after download completes
-            deleteChunkFromCache(chunkPath);
+            deleteChunkFromCacheSync(chunkPath);
         });
         return;
     }
@@ -1706,7 +1704,7 @@ app.get('/api/cloud/chunks/:chunkId', authenticateToken, blockDeletedSubscriptio
             }
             // Serve from NVMe, then delete from cache
             res.download(chunkPath, () => {
-                deleteChunkFromCache(chunkPath);
+                deleteChunkFromCacheSync(chunkPath);
             });
             return;
         }
