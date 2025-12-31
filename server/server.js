@@ -161,19 +161,40 @@ const TIERING_ENABLED = process.env.TIERING_ENABLED === 'true' && ARCHIVE_DIR !=
 const TIERING_AGE_DAYS = Number.parseInt(process.env.TIERING_AGE_DAYS || '30', 10);
 const TIERING_SIZE_THRESHOLD_MB = Number.parseInt(process.env.TIERING_SIZE_THRESHOLD_MB || '10', 10);
 
-// Real-time tiering: copy chunk to archive immediately after upload (async, non-blocking)
+// Real-time tiering: copy chunk to archive immediately after upload, then delete from NVMe
 const copyChunkToArchive = (userKey, chunkId, sourcePath) => {
     if (!TIERING_ENABLED || !ARCHIVE_DIR) return;
     setImmediate(() => {
         try {
             const archiveChunksDir = path.join(ARCHIVE_DIR, 'users', userKey, 'chunks');
             const archivePath = path.join(archiveChunksDir, chunkId);
-            if (fs.existsSync(archivePath)) return; // Already archived
+            if (fs.existsSync(archivePath)) {
+                // Already archived, delete from NVMe
+                try { fs.unlinkSync(sourcePath); } catch (e) {}
+                return;
+            }
             if (!fs.existsSync(archiveChunksDir)) fs.mkdirSync(archiveChunksDir, { recursive: true });
             fs.copyFileSync(sourcePath, archivePath);
-            console.log(`[Tiering] Copied chunk ${chunkId} to archive`);
+            // Delete from NVMe after successful copy to HDD
+            try { fs.unlinkSync(sourcePath); } catch (e) {}
+            console.log(`[Tiering] Chunk ${chunkId} -> HDD (removed from NVMe)`);
         } catch (e) {
-            console.warn(`[Tiering] Failed to copy chunk to archive: ${e.message}`);
+            console.warn(`[Tiering] Failed to archive chunk: ${e.message}`);
+        }
+    });
+};
+
+// Delete chunk from NVMe cache after download completes
+const deleteChunkFromCache = (chunkPath) => {
+    if (!TIERING_ENABLED) return;
+    setImmediate(() => {
+        try {
+            if (fs.existsSync(chunkPath)) {
+                fs.unlinkSync(chunkPath);
+                console.log(`[Tiering] Removed chunk from NVMe cache after download`);
+            }
+        } catch (e) {
+            // Ignore - file may already be deleted
         }
     });
 };
@@ -1659,9 +1680,13 @@ app.get('/api/cloud/chunks/:chunkId', authenticateToken, blockDeletedSubscriptio
         return res.status(403).json({ error: 'Access denied' });
     }
     
-    // Check hot tier (NVMe)
+    // Check hot tier (NVMe) - serve from cache if exists
     if (fs.existsSync(chunkPath)) {
-        return res.download(chunkPath);
+        res.download(chunkPath, () => {
+            // Delete from NVMe cache after download completes
+            deleteChunkFromCache(chunkPath);
+        });
+        return;
     }
     
     // Tiered storage: check cold tier (HDD) if enabled
@@ -1671,14 +1696,19 @@ app.get('/api/cloud/chunks/:chunkId', authenticateToken, blockDeletedSubscriptio
         const archiveChunkPath = path.join(archiveChunksDir, chunkId);
         
         if (archiveChunkPath.startsWith(archiveChunksDir) && fs.existsSync(archiveChunkPath)) {
-            // Copy back to hot tier for future access (cache warming)
+            // Copy to NVMe for fast serving
             try {
                 fs.copyFileSync(archiveChunkPath, chunkPath);
-                console.log(`[Tiering] Restored chunk ${chunkId} from archive to hot tier`);
+                console.log(`[Tiering] Chunk ${chunkId} HDD -> NVMe for download`);
             } catch (e) {
-                console.warn(`[Tiering] Failed to copy chunk to hot tier: ${e.message}`);
+                // Serve directly from HDD if copy fails
+                return res.download(archiveChunkPath);
             }
-            return res.download(archiveChunkPath);
+            // Serve from NVMe, then delete from cache
+            res.download(chunkPath, () => {
+                deleteChunkFromCache(chunkPath);
+            });
+            return;
         }
     }
     
