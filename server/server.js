@@ -161,6 +161,23 @@ const TIERING_ENABLED = process.env.TIERING_ENABLED === 'true' && ARCHIVE_DIR !=
 const TIERING_AGE_DAYS = Number.parseInt(process.env.TIERING_AGE_DAYS || '30', 10);
 const TIERING_SIZE_THRESHOLD_MB = Number.parseInt(process.env.TIERING_SIZE_THRESHOLD_MB || '10', 10);
 
+// Real-time tiering: copy chunk to archive immediately after upload (async, non-blocking)
+const copyChunkToArchive = (userKey, chunkId, sourcePath) => {
+    if (!TIERING_ENABLED || !ARCHIVE_DIR) return;
+    setImmediate(() => {
+        try {
+            const archiveChunksDir = path.join(ARCHIVE_DIR, 'users', userKey, 'chunks');
+            const archivePath = path.join(archiveChunksDir, chunkId);
+            if (fs.existsSync(archivePath)) return; // Already archived
+            if (!fs.existsSync(archiveChunksDir)) fs.mkdirSync(archiveChunksDir, { recursive: true });
+            fs.copyFileSync(sourcePath, archivePath);
+            console.log(`[Tiering] Copied chunk ${chunkId} to archive`);
+        } catch (e) {
+            console.warn(`[Tiering] Failed to copy chunk to archive: ${e.message}`);
+        }
+    });
+};
+
 const SUBSCRIPTION_GRACE_DAYS = Number.parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || '3', 10);
 const TRIAL_DAYS = Number.parseInt(process.env.TRIAL_DAYS || '7', 10);
 const REVENUECAT_WEBHOOK_SECRET = process.env.REVENUECAT_WEBHOOK_SECRET || '';
@@ -1532,6 +1549,8 @@ app.post('/api/cloud/chunks', authenticateToken, requireUploadSubscription, (req
                 `INSERT OR IGNORE INTO cloud_chunks (user_id, chunk_id, size, created_at) VALUES (?, ?, ?, ?)`,
                 [req.user.id, requestedId, req.body.length, Date.now()]
             );
+            // Real-time tiering: copy to HDD immediately (async)
+            copyChunkToArchive(getStealthCloudUserKey(req.user), requestedId, target);
             return res.json({ chunkId: requestedId, stored: true });
         } catch (e) {
             return res.status(500).json({ error: 'Chunk verification failed' });
@@ -1604,6 +1623,8 @@ app.post('/api/cloud/chunks', authenticateToken, requireUploadSubscription, (req
                     `INSERT OR IGNORE INTO cloud_chunks (user_id, chunk_id, size, created_at) VALUES (?, ?, ?, ?)`,
                     [req.user.id, requestedId, finalSize, Date.now()]
                 );
+                // Real-time tiering: copy to HDD immediately (async)
+                copyChunkToArchive(getStealthCloudUserKey(req.user), requestedId, finalPath);
                 return res.json({ chunkId: requestedId, stored: true });
             }
         } catch (e) {
@@ -1617,6 +1638,8 @@ app.post('/api/cloud/chunks', authenticateToken, requireUploadSubscription, (req
         `INSERT OR IGNORE INTO cloud_chunks (user_id, chunk_id, size, created_at) VALUES (?, ?, ?, ?)`,
         [req.user.id, storedName, tmpSize, Date.now()]
     );
+    // Real-time tiering: copy to HDD immediately (async)
+    copyChunkToArchive(getStealthCloudUserKey(req.user), storedName, tmpPath);
     try {
         res.json({ chunkId: storedName, stored: true });
     } finally {
