@@ -942,7 +942,10 @@ app.post('/api/register', authRateLimiter, async (req, res) => {
                 [newUserId, normalizedPlanGb, initialStatus, trialUntil, now]
             );
 
-            res.status(201).json({ message: 'User registered successfully' });
+            // Generate token for auto-login after registration (same as login flow)
+            const device_uuid = req.body.device_uuid || req.body.deviceUuid || u;
+            const token = jwt.sign({ id: newUserId, user_uuid: u, email: normalizedEmail, device_uuid: device_uuid }, JWT_SECRET, { expiresIn: '30d' });
+            res.status(201).json({ message: 'User registered successfully', token, userId: newUserId });
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
